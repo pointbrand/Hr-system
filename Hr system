@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HR System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#1E5AA8; --on-brand:#fff;
+  --bg:#F2F4F7; --surface:#FFFFFF; --ink:#1A2230; --muted:#5E6A7A; --line:#DCE1E8;
+  --ok:#1E7F55; --warn:#A8690F; --bad:#B83B34;
+  --brand-soft:color-mix(in srgb,var(--brand) 10%,#fff);
+  --brand-line:color-mix(in srgb,var(--brand) 30%,#fff);
+  --r-sm:6px; --r-md:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:"IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+
+/* Sidebar carries the client's brand */
+.side{background:var(--brand);color:var(--on-brand);padding:24px 16px;display:flex;flex-direction:column;gap:28px;position:sticky;top:0;height:100vh}
+.brandmark{display:flex;align-items:center;gap:12px;padding:0 8px}
+.brandmark img{width:44px;height:44px;object-fit:contain;background:#fff;border-radius:var(--r-sm);padding:4px}
+.brandmark .initial{width:44px;height:44px;border-radius:var(--r-sm);display:grid;place-items:center;font-weight:700;font-size:20px;border:1.5px solid currentColor}
+.brandmark b{font-size:17px;line-height:1.25;display:block}
+.brandmark small{opacity:.75;font-size:12.5px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav button{all:unset;cursor:pointer;padding:10px 12px;border-radius:var(--r-sm);font-weight:500;opacity:.82}
+.nav button:hover{opacity:1;background:color-mix(in srgb,currentColor 10%,transparent)}
+.nav button.on{opacity:1;background:color-mix(in srgb,currentColor 16%,transparent);font-weight:600}
+.nav button:focus-visible{outline:2px solid currentColor}
+.side .foot{margin-top:auto;font-size:12px;opacity:.6;padding:0 8px}
+
+.main{padding:32px 40px 64px;max-width:1240px;width:100%}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.head h1{font-size:28px;line-height:1.2;margin:0;font-weight:700;letter-spacing:-.01em}
+.head p{margin:4px 0 0;color:var(--muted)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:var(--r-sm);cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--brand);color:var(--on-brand);border-color:var(--brand)}
+.btn.primary:hover{filter:brightness(.92)}
+.btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,#fff)}
+.btn.sm{padding:4px 10px;font-size:13.5px}
+.btn.ghost{border-color:transparent;background:transparent}
+
+input[type=text],input[type=email],input[type=tel],input[type=number],input[type=date],input[type=month],select,textarea{
+  border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:8px 10px;width:100%;min-height:38px}
+textarea{min-height:70px;resize:vertical}
+
+/* Dashboard: one figure strip, not a card grid */
+.strip{display:grid;grid-template-columns:repeat(5,1fr);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);margin-bottom:28px}
+.strip div{padding:18px 20px;border-inline-start:1px solid var(--line)}
+.strip div:first-child{border-inline-start:0}
+.strip span{display:block;color:var(--muted);font-size:13.5px}
+.strip strong{display:block;font-size:26px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.panel h2{font-size:16px;margin:0;padding:14px 18px;border-bottom:1px solid var(--line);font-weight:600}
+.panel .empty{padding:28px 18px;color:var(--muted)}
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;justify-content:space-between;gap:12px;padding:12px 18px;border-top:1px solid var(--line)}
+.list li:first-child{border-top:0}
+.list small{color:var(--muted);display:block}
+
+.tablewrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:11px 14px;text-align:start;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-weight:600;font-size:13.5px;color:var(--muted);background:#FAFBFC;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:#FAFBFD}
+td small{color:var(--muted);display:block}
+td.num,th.num{text-align:end}
+tfoot td{font-weight:600;background:#FAFBFC;border-top:1px solid var(--line);border-bottom:0}
+.rowactions{display:flex;gap:6px;justify-content:flex-end}
+td input[type=number]{width:110px;min-height:32px;padding:4px 8px;text-align:end}
+
+.tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12.5px;font-weight:500;background:#EEF1F5;color:var(--muted)}
+.tag.ok{background:color-mix(in srgb,var(--ok) 12%,#fff);color:var(--ok)}
+.tag.warn{background:color-mix(in srgb,var(--warn) 14%,#fff);color:var(--warn)}
+.tag.bad{background:color-mix(in srgb,var(--bad) 12%,#fff);color:var(--bad)}
+.tag.brand{background:var(--brand-soft);color:var(--brand)}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+.seg button{all:unset;cursor:pointer;padding:5px 11px;font-size:13.5px;border-inline-start:1px solid var(--line)}
+.seg button:first-child{border-inline-start:0}
+.seg button:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+.seg button.on[data-s=present]{background:var(--ok);color:#fff}
+.seg button.on[data-s=late]{background:var(--warn);color:#fff}
+.seg button.on[data-s=absent]{background:var(--bad);color:#fff}
+
+.emptystate{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r-md);padding:48px 24px;text-align:center;color:var(--muted)}
+.emptystate p{max-width:46ch;margin:0 auto 16px}
+
+/* Settings */
+.settings{display:grid;gap:24px;max-width:760px}
+.settings section{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:20px}
+.settings h2{font-size:16px;margin:0 0 4px}
+.settings .hint{color:var(--muted);margin:0 0 16px;font-size:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:13.5px;font-weight:500;color:var(--muted)}
+.field.full{grid-column:1/-1}
+.check{display:flex;align-items:center;gap:8px;font-size:14px}
+.logoprev{display:flex;align-items:center;gap:14px}
+.logoprev img{width:64px;height:64px;object-fit:contain;border:1px solid var(--line);border-radius:var(--r-sm);padding:4px;background:#fff}
+input[type=color]{width:56px;height:38px;border:1px solid var(--line);border-radius:var(--r-sm);padding:2px;background:#fff;cursor:pointer}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(20,26,36,.45);display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;z-index:50;overflow:auto}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--r-md);width:100%;max-width:640px;box-shadow:0 18px 50px rgba(15,20,30,.25)}
+.modal header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.modal header h3{margin:0;font-size:18px}
+.modal .body{padding:20px 22px}
+.modal footer{padding:14px 22px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+.err{color:var(--bad);font-size:14px;margin-top:10px;min-height:1em}
+
+/* Setup */
+.setup{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;padding:24px;z-index:60}
+.setup.open{display:flex}
+.setup .card{background:var(--surface);border:1px solid var(--line);border-top:6px solid var(--brand);border-radius:var(--r-md);padding:32px;max-width:520px;width:100%}
+.setup h1{margin:0 0 6px;font-size:26px}
+.setup p{margin:0 0 22px;color:var(--muted)}
+
+.toast{position:fixed;bottom:24px;inset-inline-end:24px;background:var(--ink);color:#fff;padding:10px 16px;border-radius:var(--r-sm);opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;z-index:70}
+.toast.show{opacity:1;transform:none}
+
+input[type=time],input[type=password]{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:8px 10px;width:100%;min-height:38px}
+/* Clock-in */
+.clockwrap{max-width:520px;margin:0 auto}
+.clockface{text-align:center;padding:12px 0 28px}
+.clockface .time{font-size:clamp(56px,12vw,96px);font-weight:600;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--brand)}
+.clockface .day{color:var(--muted);margin-top:8px}
+.clockcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:22px;display:grid;gap:14px}
+.clockcard .state{font-size:14px;color:var(--muted);min-height:1.5em}
+.clockbtn{padding:16px;font-size:18px;font-weight:600;border-radius:var(--r-md);border:0;cursor:pointer;background:var(--brand);color:var(--on-brand)}
+.clockbtn.out{background:var(--ink);color:#fff}
+.clockbtn:disabled{opacity:.55;cursor:not-allowed}
+.msg{padding:12px 14px;border-radius:var(--r-sm);font-size:14.5px;display:none}
+.msg.show{display:block}
+.msg.ok{background:color-mix(in srgb,var(--ok) 12%,#fff);color:var(--ok)}
+.msg.bad{background:color-mix(in srgb,var(--bad) 10%,#fff);color:var(--bad)}
+.msg.info{background:var(--brand-soft);color:var(--brand)}
+.kioskbar{text-align:center;margin-top:28px}
+body.kiosk .app{grid-template-columns:1fr}
+body.kiosk .side{display:none}
+body.kiosk .main{max-width:none;padding-top:8vh}
+h3.sub{font-size:16px;margin:28px 0 12px}
+
+/* Payslip */
+#printArea{display:none}
+.slip{max-width:720px;margin:0 auto;font-size:14px}
+.slip .top{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--brand);padding-bottom:14px;margin-bottom:16px}
+.slip .top img{height:56px}
+.slip h2{margin:0;font-size:22px}
+.slip .meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-bottom:18px}
+.slip .meta span{color:var(--muted)}
+.slip table td,.slip table th{padding:8px 10px;border:1px solid var(--line)}
+.slip .netline{display:flex;justify-content:space-between;background:var(--brand-soft);border:1px solid var(--brand-line);padding:12px 14px;margin-top:14px;font-size:17px;font-weight:700}
+.slip .sign{display:flex;justify-content:space-between;margin-top:56px;color:var(--muted)}
+.slip .sign div{border-top:1px solid var(--muted);padding-top:6px;width:40%}
+
+@media print{
+  body.printing > *:not(#printArea){display:none!important}
+  body.printing #printArea{display:block}
+  body{background:#fff}
+  @page{margin:16mm}
+}
+@media (max-width:1000px){
+  .strip{grid-template-columns:repeat(2,1fr)}
+  .strip div{border-inline-start:0;border-top:1px solid var(--line)}
+  .strip div:nth-child(-n+2){border-top:0}
+  .cols{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr}
+  .side{position:static;height:auto;padding:14px;gap:12px}
+  .nav{flex-direction:row;overflow-x:auto;gap:4px}
+  .nav button{white-space:nowrap}
+  .side .foot{display:none}
+  .main{padding:20px 16px 48px}
+  .grid2{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="side">
+    <div class="brandmark" id="brandmark"></div>
+    <nav class="nav" id="nav" aria-label="Main"></nav>
+    <div class="foot" id="foot"></div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <form id="modalForm" novalidate>
+      <header><h3 id="modalTitle"></h3><button type="button" class="btn ghost" data-close aria-label="Close">✕</button></header>
+      <div class="body" id="modalBody"></div>
+      <footer id="modalFoot"></footer>
+    </form>
+  </div>
+</div>
+
+<div class="setup" id="setup">
+  <form class="card" id="setupForm">
+    <h1 data-t="setupTitle"></h1>
+    <p data-t="setupSub"></p>
+    <div class="grid2">
+      <div class="field full"><label data-t="companyName"></label><input type="text" name="company" required></div>
+      <div class="field"><label data-t="language"></label>
+        <select name="lang"><option value="en">English</option><option value="ar">العربية</option></select></div>
+      <div class="field"><label data-t="currency"></label><input type="text" name="currency" maxlength="6"></div>
+      <div class="field"><label data-t="brandColor"></label><input type="color" name="color"></div>
+    </div>
+    <div class="err" id="setupErr"></div>
+    <button class="btn primary" type="submit" style="margin-top:8px" data-t="start"></button>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+<div id="printArea"></div>
+
+<script>
+/* =========================================================
+   SELLER CONFIG — change these before delivering to a client
+   ========================================================= */
+const CONFIG = {
+  productName: 'HR System',        // shown under the client's name in the sidebar
+  defaultColor: '#1E5AA8',
+  defaultCurrency: 'SAR',
+  defaultLang: 'en',               // 'en' or 'ar'
+  defaultGosiRate: 9.75,           // employee share % on (basic + housing) for Saudi nationals
+  storageKey: 'hr_whitelabel_v1'   // use a different key per client if several run on one machine
+};
+
+/* ---------- i18n ---------- */
+const I18N = {
+en:{dashboard:'Dashboard',employees:'Employees',departments:'Departments',attendance:'Attendance',leaves:'Leave',payroll:'Payroll',settings:'Settings',
+headcount:'Active employees',presentToday:'Present today',onLeaveToday:'On leave today',pending:'Pending requests',payrollMonth:'Payroll this month',
+expiring:'IDs expiring within 60 days',noExpiring:'No IDs expire in the next 60 days.',recentRequests:'Recent leave requests',
+addEmployee:'Add employee',editEmployee:'Edit employee',search:'Search by name, number or ID',allDepts:'All departments',
+name:'Full name',empNo:'Employee no.',jobTitle:'Job title',department:'Department',phone:'Phone',email:'Email',nationality:'Nationality',
+saudi:'Saudi national (GOSI applies)',idNo:'ID / Iqama no.',idExpiry:'ID expiry',joinDate:'Join date',basic:'Basic salary',housing:'Housing',
+transport:'Transport',otherAllow:'Other allowances',annualDays:'Annual leave days',status:'Status',active:'Active',inactive:'Inactive',
+save:'Save',cancel:'Cancel',delete:'Delete',edit:'Edit',confirmDelete:'Delete this record? This cannot be undone.',leaveBalance:'Leave balance',
+noEmployees:'No employees yet. Add your first employee to start tracking attendance, leave and payroll.',
+addDept:'Add department',editDept:'Edit department',deptName:'Department name',manager:'Manager',staffCount:'Employees',
+noDepts:'No departments yet. Create departments to group your employees.',deptInUse:'Move or remove the employees in this department first.',
+date:'Date',markAllPresent:'Mark all present',present:'Present',absent:'Absent',late:'Late',onLeave:'On leave',
+newRequest:'New leave request',type:'Type',annual:'Annual',sick:'Sick',unpaid:'Unpaid',otherLeave:'Other',from:'From',to:'To',days:'Days',note:'Note',
+approve:'Approve',reject:'Reject',pendingS:'Pending',approved:'Approved',rejected:'Rejected',all:'All',noLeaves:'No leave requests.',
+employee:'Employee',month:'Month',gross:'Gross',absenceDed:'Absence',unpaidDed:'Unpaid leave',gosi:'GOSI',additions:'Additions',deductions:'Deductions',
+net:'Net pay',payslip:'Payslip',exportCsv:'Export CSV',total:'Total',companyName:'Company name',logo:'Logo',uploadLogo:'Upload logo',
+removeLogo:'Remove logo',brandColor:'Brand color',currency:'Currency',language:'Language',gosiRate:'GOSI employee share (%)',
+backup:'Backup',backupHint:'All data is stored in this browser. Download a backup regularly and keep it somewhere safe.',
+exportData:'Download backup',importData:'Restore from backup',resetData:'Erase all data',
+resetConfirm:'Erase all employees, attendance, leave and payroll data? Download a backup first if you need it.',
+branding:'Branding',brandingHint:'Your name, logo and color appear across the system and on payslips.',payrollRules:'Payroll rules',
+dedRuleNote:'Absence and unpaid leave are deducted at basic salary ÷ 30 per day.',saved:'Saved',setupTitle:'Set up your HR workspace',
+setupSub:'You can change all of this later in Settings.',start:'Start',required:'Fill in all required fields.',logoTooBig:'Logo must be under 500 KB.',
+badBackup:"This file isn't a valid backup.",restored:'Backup restored',daysLeft:'days left',expired:'Expired',earnings:'Earnings',period:'Period',
+signature:'Employee signature',approverSig:'Approved by',noPay:'Add active employees to run payroll.',dateOrder:'End date must be on or after the start date.',
+selectEmp:'Select employee',none:'None',daysUsed:'used',of:'of',erased:'All data erased',lateShort:'Late',absentDays:'Absent days',
+noActive:'No active employees to mark.',actions:'',clock:'Clock in',timelog:'Time log',clockIn:'Clock in',clockOut:'Clock out',pin:'PIN',wrongPin:'Wrong PIN.',locating:'Getting your location…',
+geoDenied:'Location access is blocked. Allow location for this page and try again.',geoFail:"Couldn't get your location. Turn on GPS and try again.",
+lowAcc:'GPS accuracy is {a} m; {m} m or better is needed. Move near a window or outside and try again.',
+tooFar:'You are {d} m from {l}. Clocking is allowed within {r} m.',noLocs:'No work locations are set. Add one in Settings first.',
+clockedIn:'{n} clocked in at {t}',clockedOut:'{n} clocked out at {t} — {h} h worked',since:'Clocked in since {t}',notIn:'Not clocked in',
+locations:'Work locations',locationsHint:'Employees can only clock in or out inside the radius of their assigned location.',addLoc:'Add location',
+locName:'Location name',lat:'Latitude',lng:'Longitude',radius:'Radius (m)',useHere:'Use my current location',gotHere:'Location captured (accuracy {a} m)',
+noLocsYet:'No locations yet.',anyLoc:'Any location',workLoc:'Work location',timeRules:'Working hours',
+timeRulesHint:'Overtime follows Saudi labor law: hourly wage plus 50% of basic hourly wage. Hourly wage = monthly ÷ 30 ÷ daily hours.',
+maxAcc:'Required GPS accuracy (m)',dailyHours:'Daily hours',shiftStart:'Shift start',grace:'Late grace (minutes)',
+payOt:'Pay overtime from clock hours',deductShort:'Deduct missing hours',adminPin:'Admin PIN to exit kiosk',openKiosk:'Kiosk mode',
+kioskHint:'Kiosk mode shows only the clock-in screen. Open it on the branch device.',exitKiosk:'Exit kiosk',enterAdminPin:'Enter admin PIN',
+inTime:'In',outTime:'Out',hours:'Hours',missingOut:'No clock-out',missingIn:'No clock-in',manual:'Edited',addPunch:'Add correction',punchType:'Punch',
+time:'Time',worked:'Worked',expected:'Expected',overtime:'Overtime',shortHours:'Short',daysWorked:'Days',sessions:'Clock records',
+noPunches:'No clock records for this month.',otPay:'Overtime',shortDed:'Short hours',h:'h',accuracy:'Accuracy',allEmps:'All employees',
+missing:'Unclosed',invalidCoords:'Enter a valid latitude and longitude.'},
+ar:{dashboard:'لوحة التحكم',employees:'الموظفون',departments:'الأقسام',attendance:'الحضور',leaves:'الإجازات',payroll:'الرواتب',settings:'الإعدادات',
+headcount:'الموظفون النشطون',presentToday:'حاضرون اليوم',onLeaveToday:'في إجازة اليوم',pending:'طلبات معلّقة',payrollMonth:'رواتب هذا الشهر',
+expiring:'هويات تنتهي خلال 60 يومًا',noExpiring:'لا توجد هويات تنتهي خلال 60 يومًا.',recentRequests:'أحدث طلبات الإجازة',
+addEmployee:'إضافة موظف',editEmployee:'تعديل بيانات موظف',search:'ابحث بالاسم أو الرقم أو الهوية',allDepts:'كل الأقسام',
+name:'الاسم الكامل',empNo:'الرقم الوظيفي',jobTitle:'المسمى الوظيفي',department:'القسم',phone:'الجوال',email:'البريد الإلكتروني',nationality:'الجنسية',
+saudi:'سعودي الجنسية (يخضع للتأمينات)',idNo:'رقم الهوية / الإقامة',idExpiry:'انتهاء الهوية',joinDate:'تاريخ المباشرة',basic:'الراتب الأساسي',housing:'بدل السكن',
+transport:'بدل النقل',otherAllow:'بدلات أخرى',annualDays:'أيام الإجازة السنوية',status:'الحالة',active:'نشط',inactive:'غير نشط',
+save:'حفظ',cancel:'إلغاء',delete:'حذف',edit:'تعديل',confirmDelete:'حذف هذا السجل؟ لا يمكن التراجع عن ذلك.',leaveBalance:'رصيد الإجازة',
+noEmployees:'لا يوجد موظفون بعد. أضف أول موظف لبدء تتبع الحضور والإجازات والرواتب.',
+addDept:'إضافة قسم',editDept:'تعديل قسم',deptName:'اسم القسم',manager:'المدير',staffCount:'عدد الموظفين',
+noDepts:'لا توجد أقسام بعد. أنشئ أقسامًا لتنظيم الموظفين.',deptInUse:'انقل موظفي هذا القسم أو احذفهم أولًا.',
+date:'التاريخ',markAllPresent:'تحضير الجميع',present:'حاضر',absent:'غائب',late:'متأخر',onLeave:'في إجازة',
+newRequest:'طلب إجازة جديد',type:'النوع',annual:'سنوية',sick:'مرضية',unpaid:'بدون راتب',otherLeave:'أخرى',from:'من',to:'إلى',days:'الأيام',note:'ملاحظة',
+approve:'اعتماد',reject:'رفض',pendingS:'معلّق',approved:'معتمد',rejected:'مرفوض',all:'الكل',noLeaves:'لا توجد طلبات إجازة.',
+employee:'الموظف',month:'الشهر',gross:'الإجمالي',absenceDed:'خصم الغياب',unpaidDed:'إجازة بدون راتب',gosi:'التأمينات',additions:'إضافات',deductions:'خصومات',
+net:'صافي الراتب',payslip:'قسيمة الراتب',exportCsv:'تصدير CSV',total:'الإجمالي',companyName:'اسم المنشأة',logo:'الشعار',uploadLogo:'رفع الشعار',
+removeLogo:'إزالة الشعار',brandColor:'لون الهوية',currency:'العملة',language:'اللغة',gosiRate:'نسبة التأمينات على الموظف (%)',
+backup:'النسخ الاحتياطي',backupHint:'تُحفظ جميع البيانات في هذا المتصفح. نزّل نسخة احتياطية بانتظام واحفظها في مكان آمن.',
+exportData:'تنزيل نسخة احتياطية',importData:'استعادة نسخة احتياطية',resetData:'مسح جميع البيانات',
+resetConfirm:'مسح جميع بيانات الموظفين والحضور والإجازات والرواتب؟ نزّل نسخة احتياطية أولًا إن احتجت.',
+branding:'الهوية',brandingHint:'يظهر اسم المنشأة وشعارها ولونها في النظام وفي قسائم الرواتب.',payrollRules:'قواعد الرواتب',
+dedRuleNote:'يُخصم الغياب والإجازة بدون راتب بمعدل الراتب الأساسي ÷ 30 عن كل يوم.',saved:'تم الحفظ',setupTitle:'إعداد نظام الموارد البشرية',
+setupSub:'يمكنك تعديل كل ذلك لاحقًا من الإعدادات.',start:'ابدأ',required:'أكمل الحقول المطلوبة.',logoTooBig:'يجب أن يكون حجم الشعار أقل من 500 كيلوبايت.',
+badBackup:'هذا الملف ليس نسخة احتياطية صالحة.',restored:'تمت استعادة النسخة',daysLeft:'يوم متبقٍ',expired:'منتهية',earnings:'الاستحقاقات',period:'الفترة',
+signature:'توقيع الموظف',approverSig:'اعتمدها',noPay:'أضف موظفين نشطين لتشغيل الرواتب.',dateOrder:'يجب أن يكون تاريخ النهاية بعد تاريخ البداية أو مساويًا له.',
+selectEmp:'اختر الموظف',none:'بدون',daysUsed:'مستخدم',of:'من',erased:'تم مسح جميع البيانات',lateShort:'تأخير',absentDays:'أيام الغياب',
+noActive:'لا يوجد موظفون نشطون للتحضير.',actions:'',clock:'تسجيل الحضور',timelog:'سجل الدوام',clockIn:'تسجيل دخول',clockOut:'تسجيل خروج',pin:'الرمز السري',wrongPin:'الرمز السري غير صحيح.',locating:'جارٍ تحديد موقعك…',
+geoDenied:'الوصول للموقع محظور. اسمح بالموقع لهذه الصفحة وحاول مرة أخرى.',geoFail:'تعذّر تحديد موقعك. فعّل GPS وحاول مرة أخرى.',
+lowAcc:'دقة الموقع {a} م والمطلوب {m} م أو أقل. اقترب من نافذة أو اخرج وحاول مرة أخرى.',
+tooFar:'أنت على بُعد {d} م من {l}. التسجيل مسموح ضمن {r} م.',noLocs:'لا توجد مواقع عمل. أضف موقعًا من الإعدادات أولًا.',
+clockedIn:'سجّل {n} الدخول الساعة {t}',clockedOut:'سجّل {n} الخروج الساعة {t} — {h} ساعة عمل',since:'مسجّل دخول منذ {t}',notIn:'غير مسجّل دخول',
+locations:'مواقع العمل',locationsHint:'لا يمكن للموظف تسجيل الدخول أو الخروج إلا داخل نطاق موقعه المحدد.',addLoc:'إضافة موقع',
+locName:'اسم الموقع',lat:'خط العرض',lng:'خط الطول',radius:'النطاق (متر)',useHere:'استخدم موقعي الحالي',gotHere:'تم تحديد الموقع (الدقة {a} م)',
+noLocsYet:'لا توجد مواقع بعد.',anyLoc:'أي موقع',workLoc:'موقع العمل',timeRules:'ساعات العمل',
+timeRulesHint:'يُحتسب العمل الإضافي وفق نظام العمل السعودي: أجر الساعة مضافًا إليه 50% من أجر الساعة الأساسي. أجر الساعة = الشهري ÷ 30 ÷ ساعات اليوم.',
+maxAcc:'دقة GPS المطلوبة (متر)',dailyHours:'ساعات العمل اليومية',shiftStart:'بداية الدوام',grace:'سماحية التأخير (دقائق)',
+payOt:'احتساب العمل الإضافي من ساعات الدوام',deductShort:'خصم الساعات الناقصة',adminPin:'رمز المشرف للخروج من وضع الجهاز',openKiosk:'وضع جهاز الحضور',
+kioskHint:'يعرض وضع الجهاز شاشة الحضور فقط. افتحه على جهاز الفرع.',exitKiosk:'الخروج من وضع الجهاز',enterAdminPin:'أدخل رمز المشرف',
+inTime:'الدخول',outTime:'الخروج',hours:'الساعات',missingOut:'لم يسجّل خروج',missingIn:'لم يسجّل دخول',manual:'معدّل',addPunch:'إضافة تصحيح',punchType:'الحركة',
+time:'الوقت',worked:'ساعات العمل',expected:'المطلوب',overtime:'إضافي',shortHours:'نقص',daysWorked:'الأيام',sessions:'سجلات الحضور',
+noPunches:'لا توجد سجلات حضور لهذا الشهر.',otPay:'العمل الإضافي',shortDed:'ساعات ناقصة',h:'س',accuracy:'الدقة',allEmps:'كل الموظفين',
+missing:'غير مكتمل',invalidCoords:'أدخل خط عرض وطول صحيحين.'}
+};
+
+/* ---------- State ---------- */
+const blank = () => ({
+  settings:{company:'',logo:'',color:CONFIG.defaultColor,currency:CONFIG.defaultCurrency,lang:CONFIG.defaultLang,gosiRate:CONFIG.defaultGosiRate,setupDone:false,locations:[],maxAcc:50,dailyHours:8,shiftStart:'09:00',grace:15,payOt:true,deductShort:false,adminPin:''},
+  departments:[],employees:[],attendance:{},leaves:[],payroll:{},punches:[]
+});
+let S = load();
+let view = 'dashboard';
+const ui = {q:'',dept:'',attDate:todayStr(),leaveFilter:'all',payMonth:todayStr().slice(0,7),tlMonth:todayStr().slice(0,7),tlEmp:''};
+
+function load(){
+  try{const raw=localStorage.getItem(CONFIG.storageKey); if(raw){const d=JSON.parse(raw); return Object.assign(blank(),d,{settings:Object.assign(blank().settings,d.settings||{})});}}catch(e){}
+  return blank();
+}
+function persist(){try{localStorage.setItem(CONFIG.storageKey,JSON.stringify(S));}catch(e){toast('Storage full or blocked');}}
+
+/* ---------- Helpers ---------- */
+const $=s=>document.querySelector(s);
+const t=k=>(I18N[S.settings.lang]||I18N.en)[k]??I18N.en[k]??k;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0};
+function todayStr(d=new Date()){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function parseD(s){const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
+function daysBetween(a,b){return Math.round((parseD(b)-parseD(a))/864e5)+1}
+function money(n){return num(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+esc(S.settings.currency)}
+function fmtDate(s){if(!s)return '—';return parseD(s).toLocaleDateString(S.settings.lang==='ar'?'ar-SA-u-ca-gregory-nu-latn':'en-GB',{day:'numeric',month:'short',year:'numeric'})}
+function monthLabel(m){const [y,mo]=m.split('-').map(Number);return new Date(y,mo-1,1).toLocaleDateString(S.settings.lang==='ar'?'ar-SA-u-ca-gregory-nu-latn':'en-GB',{month:'long',year:'numeric'})}
+const emp=id=>S.employees.find(e=>e.id===id);
+const dept=id=>S.departments.find(d=>d.id===id);
+const activeEmps=()=>S.employees.filter(e=>e.status!=='inactive');
+function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2200)}
+function textOn(hex){const h=hex.replace('#','');const [r,g,b]=[0,2,4].map(i=>parseInt(h.substr(i,2),16)/255).map(c=>c<=.03928?c/12.92:Math.pow((c+.055)/1.055,2.4));return (.2126*r+.7152*g+.0722*b)>.45?'#141A24':'#FFFFFF'}
+function download(name,content,type){const blob=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+
+function leaveDaysIn(l,from,to){ // overlap days between leave l and [from,to]
+  const s=l.from>from?l.from:from, e=l.to<to?l.to:to; return s>e?0:daysBetween(s,e);
+}
+function onLeave(empId,date){return S.leaves.some(l=>l.empId===empId&&l.status==='approved'&&l.from<=date&&l.to>=date)}
+function annualUsed(empId,year){return S.leaves.filter(l=>l.empId===empId&&l.status==='approved'&&l.type==='annual').reduce((a,l)=>a+leaveDaysIn(l,year+'-01-01',year+'-12-31'),0)}
+
+/* ---------- Clock & timesheet ---------- */
+const tf=(k,o)=>t(k).replace(/\{(\w+)\}/g,(_,x)=>o[x]??'');
+const locById=id=>(S.settings.locations||[]).find(l=>l.id===id);
+function fmtTime(ts){return new Date(ts).toLocaleTimeString(S.settings.lang==='ar'?'ar-SA-u-nu-latn':'en-GB',{hour:'2-digit',minute:'2-digit'})}
+const hrs=n=>(Math.round(n*100)/100).toFixed(2);
+function distM(a,b,c,d){const r=x=>x*Math.PI/180,dLat=r(c-a),dLon=r(d-b);const q=Math.sin(dLat/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLon/2)**2;return 2*6371000*Math.asin(Math.sqrt(q))}
+// Watches GPS for up to ms and returns the most accurate fix; resolves early once accuracy <= target
+function getBestPos(target,ms=15000){return new Promise((res,rej)=>{
+  if(!navigator.geolocation)return rej({code:0});
+  let best=null,done=false,w=null,tm=null;
+  const finish=err=>{if(done)return;done=true;if(w!==null)navigator.geolocation.clearWatch(w);clearTimeout(tm);best?res(best):rej(err||{code:3})};
+  w=navigator.geolocation.watchPosition(p=>{const c=p.coords;if(!best||c.accuracy<best.accuracy)best={latitude:c.latitude,longitude:c.longitude,accuracy:c.accuracy};if(c.accuracy<=target)finish()},
+    err=>{if(err.code===1||!best)finish(err)},{enableHighAccuracy:true,maximumAge:0,timeout:ms});
+  tm=setTimeout(()=>finish({code:3}),ms);
+});}
+function buildSessions(){
+  const by={},out=[];
+  [...S.punches].sort((a,b)=>a.ts-b.ts).forEach(p=>(by[p.empId]=by[p.empId]||[]).push(p));
+  const mk=(empId,i,o)=>{const start=(i||o).ts;return {empId,inP:i,outP:o,start,date:todayStr(new Date(start)),hours:i&&o?(o.ts-i.ts)/36e5:0}};
+  for(const [eid,list] of Object.entries(by)){let open=null;
+    for(const p of list){if(p.type==='in'){if(open)out.push(mk(eid,open,null));open=p}else{out.push(mk(eid,open,p));open=null}}
+    if(open)out.push(mk(eid,open,null));}
+  return out.sort((a,b)=>b.start-a.start);
+}
+function lastPunch(empId){return S.punches.filter(p=>p.empId===empId).sort((a,b)=>b.ts-a.ts)[0]}
+function dailyH(e){return num(e&&e.dailyHours)||num(S.settings.dailyHours)||8}
+function monthStats(empId,month,all){
+  const dh=dailyH(emp(empId)),days={};let missing=0;
+  (all||buildSessions()).filter(s=>s.empId===empId&&s.date.startsWith(month)).forEach(s=>{if(!s.inP||!s.outP)missing++;days[s.date]=(days[s.date]||0)+s.hours});
+  let worked=0,ot=0,short=0,n=0;
+  for(const h of Object.values(days)){if(h<=0)continue;n++;worked+=h;ot+=Math.max(0,h-dh);short+=Math.max(0,dh-h)}
+  return {days:n,worked,expected:n*dh,ot,short,missing};
+}
+
+function calcPay(e,month,all){
+  const [y,m]=month.split('-').map(Number);
+  const first=month+'-01', last=month+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
+  const daily=num(e.basic)/30;
+  let absent=0;
+  for(const [d,rec] of Object.entries(S.attendance)){ if(d>=first&&d<=last&&rec[e.id]==='absent') absent++; }
+  const unpaidDays=S.leaves.filter(l=>l.empId===e.id&&l.status==='approved'&&l.type==='unpaid').reduce((a,l)=>a+leaveDaysIn(l,first,last),0);
+  const gross=num(e.basic)+num(e.housing)+num(e.transport)+num(e.other);
+  const absenceDed=daily*absent, unpaidDed=daily*unpaidDays;
+  const gosi=e.saudi?(num(e.basic)+num(e.housing))*num(S.settings.gosiRate)/100:0;
+  const adj=(S.payroll[month]||{})[e.id]||{};
+  const add=num(adj.add), ded=num(adj.ded);
+  const ts=monthStats(e.id,month,all),dh=dailyH(e);
+  const otPay=S.settings.payOt?ts.ot*(gross/30/dh+0.5*num(e.basic)/30/dh):0;
+  const shortDed=S.settings.deductShort?ts.short*num(e.basic)/30/dh:0;
+  const net=gross+add-ded-absenceDed-unpaidDed-gosi+otPay-shortDed;
+  return {gross,absent,absenceDed,unpaidDays,unpaidDed,gosi,add,ded,otH:ts.ot,otPay,shortH:ts.short,shortDed,net};
+}
+
+/* ---------- Theme & shell ---------- */
+function applyTheme(){
+  const s=S.settings;
+  document.documentElement.lang=s.lang; document.documentElement.dir=s.lang==='ar'?'rtl':'ltr';
+  document.documentElement.style.setProperty('--brand',s.color);
+  document.documentElement.style.setProperty('--on-brand',textOn(s.color));
+  document.title=(s.company?s.company+' — ':'')+CONFIG.productName;
+  const initial=esc((s.company||'H').trim().charAt(0).toUpperCase());
+  $('#brandmark').innerHTML=(s.logo?`<img src="${s.logo}" alt="">`:`<div class="initial">${initial}</div>`)+
+    `<div><b>${esc(s.company||'—')}</b><small>${esc(CONFIG.productName)}</small></div>`;
+  $('#foot').textContent='© '+new Date().getFullYear()+' '+(s.company||'');
+  document.querySelectorAll('[data-t]').forEach(el=>el.textContent=t(el.dataset.t));
+}
+const VIEWS=['dashboard','employees','departments','attendance','clock','timelog','leaves','payroll','settings'];
+function renderNav(){
+  $('#nav').innerHTML=VIEWS.map(v=>`<button type="button" data-view="${v}" class="${v===view?'on':''}" ${v===view?'aria-current="page"':''}>${t(v)}</button>`).join('');
+}
+let tick=null;
+const isKiosk=()=>location.hash==='#kiosk';
+function render(){clearInterval(tick);document.body.classList.toggle('kiosk',isKiosk());if(isKiosk())view='clock';applyTheme();renderNav();R[view]();}
+function header(title,sub,tools=''){return `<div class="head"><div><h1>${title}</h1>${sub?`<p>${sub}</p>`:''}</div><div class="tools">${tools}</div></div>`}
+function statusTag(s){return `<span class="tag ${s==='approved'?'ok':s==='rejected'?'bad':'warn'}">${t(s==='pending'?'pendingS':s)}</span>`}
+const leaveTypes=['annual','sick','unpaid','other'];
+const leaveLabel=ty=>t(ty==='other'?'otherLeave':ty);
+
+/* ---------- Views ---------- */
+const R={};
+
+R.dashboard=()=>{
+  const today=todayStr(), month=today.slice(0,7);
+  const act=activeEmps();
+  const rec=S.attendance[today]||{};
+  const present=act.filter(e=>rec[e.id]==='present'||rec[e.id]==='late').length;
+  const leaveToday=act.filter(e=>onLeave(e.id,today)).length;
+  const pending=S.leaves.filter(l=>l.status==='pending').length;
+  const allS=buildSessions();const pay=act.reduce((a,e)=>a+calcPay(e,month,allS).net,0);
+  const soon=new Date();soon.setDate(soon.getDate()+60);const soonS=todayStr(soon);
+  const exp=act.filter(e=>e.idExpiry&&e.idExpiry<=soonS).sort((a,b)=>a.idExpiry.localeCompare(b.idExpiry));
+  const recent=[...S.leaves].sort((a,b)=>b.created-a.created).slice(0,6);
+  $('#main').innerHTML=header(t('dashboard'),fmtDate(today))+
+  `<div class="strip">
+    <div><span>${t('headcount')}</span><strong>${act.length}</strong></div>
+    <div><span>${t('presentToday')}</span><strong>${present}</strong></div>
+    <div><span>${t('onLeaveToday')}</span><strong>${leaveToday}</strong></div>
+    <div><span>${t('pending')}</span><strong>${pending}</strong></div>
+    <div><span>${t('payrollMonth')}</span><strong style="font-size:20px">${money(pay)}</strong></div>
+  </div>
+  <div class="cols">
+    <div class="panel"><h2>${t('expiring')}</h2>${exp.length?`<ul class="list">${exp.map(e=>{const d=daysBetween(today,e.idExpiry)-1;return `<li><div>${esc(e.name)}<small>${esc(e.idNo||'')}</small></div><div>${d<0?`<span class="tag bad">${t('expired')}</span>`:`<span class="tag ${d<=30?'bad':'warn'}">${d} ${t('daysLeft')}</span>`}<small style="text-align:end">${fmtDate(e.idExpiry)}</small></div></li>`}).join('')}</ul>`:`<div class="empty">${t('noExpiring')}</div>`}</div>
+    <div class="panel"><h2>${t('recentRequests')}</h2>${recent.length?`<ul class="list">${recent.map(l=>`<li><div>${esc(emp(l.empId)?.name||'—')}<small>${leaveLabel(l.type)} · ${fmtDate(l.from)} – ${fmtDate(l.to)}</small></div><div>${statusTag(l.status)}</div></li>`).join('')}</ul>`:`<div class="empty">${t('noLeaves')}</div>`}</div>
+  </div>`;
+};
+
+R.employees=()=>{
+  const q=ui.q.toLowerCase(), year=new Date().getFullYear();
+  const rows=S.employees.filter(e=>(!ui.dept||e.deptId===ui.dept)&&(!q||[e.name,e.empNo,e.idNo,e.jobTitle].join(' ').toLowerCase().includes(q)));
+  const tools=`<input type="text" id="q" placeholder="${t('search')}" value="${esc(ui.q)}" style="width:240px">
+    <select id="deptF" style="width:180px"><option value="">${t('allDepts')}</option>${S.departments.map(d=>`<option value="${d.id}" ${ui.dept===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>
+    <button class="btn primary" data-act="addEmp">${t('addEmployee')}</button>`;
+  $('#main').innerHTML=header(t('employees'),`${S.employees.length}`,tools)+(S.employees.length?
+  `<div class="tablewrap"><table><thead><tr><th>${t('name')}</th><th>${t('department')}</th><th>${t('idNo')}</th><th>${t('joinDate')}</th><th class="num">${t('gross')}</th><th>${t('leaveBalance')}</th><th>${t('status')}</th><th></th></tr></thead><tbody>
+  ${rows.map(e=>{const pay=num(e.basic)+num(e.housing)+num(e.transport)+num(e.other);const used=annualUsed(e.id,year);return `<tr>
+    <td><b>${esc(e.name)}</b><small>${esc(e.empNo||'')} ${e.jobTitle?'· '+esc(e.jobTitle):''}</small></td>
+    <td>${esc(dept(e.deptId)?.name||'—')}</td>
+    <td>${esc(e.idNo||'—')}<small>${e.idExpiry?fmtDate(e.idExpiry):''}</small></td>
+    <td>${fmtDate(e.joinDate)}</td>
+    <td class="num">${money(pay)}</td>
+    <td>${num(e.annualDays)-used} <small>${used} ${t('daysUsed')} ${t('of')} ${num(e.annualDays)}</small></td>
+    <td><span class="tag ${e.status==='inactive'?'':'ok'}">${t(e.status==='inactive'?'inactive':'active')}</span></td>
+    <td><div class="rowactions"><button class="btn sm" data-act="editEmp" data-id="${e.id}">${t('edit')}</button><button class="btn sm danger" data-act="delEmp" data-id="${e.id}">${t('delete')}</button></div></td></tr>`}).join('')}
+  </tbody></table></div>`:`<div class="emptystate"><p>${t('noEmployees')}</p><button class="btn primary" data-act="addEmp">${t('addEmployee')}</button></div>`);
+  const qi=$('#q'); if(qi){qi.oninput=e=>{ui.q=e.target.value;const pos=e.target.selectionStart;R.employees();const n=$('#q');n.focus();n.setSelectionRange(pos,pos)};}
+  const df=$('#deptF'); if(df) df.onchange=e=>{ui.dept=e.target.value;R.employees()};
+};
+
+function empForm(e={}){
+  const f=(k,type='text',req=false,extra='')=>`<div class="field"><label>${t(k)}${req?' *':''}</label><input type="${type}" name="${k}" value="${esc(e[k]??'')}" ${req?'required':''} ${extra}></div>`;
+  return `<div class="grid2">
+    <div class="field full"><label>${t('name')} *</label><input type="text" name="name" value="${esc(e.name||'')}" required></div>
+    ${f('empNo')}${f('jobTitle')}
+    <div class="field"><label>${t('department')}</label><select name="deptId"><option value="">${t('none')}</option>${S.departments.map(d=>`<option value="${d.id}" ${e.deptId===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select></div>
+    ${f('nationality')}${f('phone','tel')}${f('email','email')}${f('idNo')}${f('idExpiry','date')}${f('joinDate','date')}
+    <div class="field"><label>${t('status')}</label><select name="status"><option value="active">${t('active')}</option><option value="inactive" ${e.status==='inactive'?'selected':''}>${t('inactive')}</option></select></div>
+    ${f('basic','number',true,'min="0" step="0.01"')}${f('housing','number',false,'min="0" step="0.01"')}${f('transport','number',false,'min="0" step="0.01"')}${f('other','number',false,'min="0" step="0.01"').replace(`>${t('other')}<`,`>${t('otherAllow')}<`)}
+    <div class="field"><label>${t('workLoc')}</label><select name="locId"><option value="">${t('anyLoc')}</option>${(S.settings.locations||[]).map(l=>`<option value="${l.id}" ${e.locId===l.id?'selected':''}>${esc(l.name)}</option>`).join('')}</select></div>
+    <div class="field"><label>${t('pin')}</label><input type="text" name="pin" inputmode="numeric" maxlength="6" autocomplete="off" value="${esc(e.pin||'')}"></div>
+    <div class="field"><label>${t('shiftStart')}</label><input type="time" name="shiftStart" value="${esc(e.shiftStart||'')}"></div>
+    <div class="field"><label>${t('dailyHours')}</label><input type="number" name="dailyHours" min="0" max="24" step="0.5" placeholder="${esc(S.settings.dailyHours)}" value="${esc(e.dailyHours||'')}"></div>
+    <div class="field"><label>${t('annualDays')}</label><input type="number" name="annualDays" min="0" value="${esc(e.annualDays??21)}"></div>
+    <div class="field" style="justify-content:flex-end"><label class="check"><input type="checkbox" name="saudi" ${e.saudi?'checked':''}> ${t('saudi')}</label></div>
+  </div>`;
+}
+
+R.departments=()=>{
+  $('#main').innerHTML=header(t('departments'),'',`<button class="btn primary" data-act="addDept">${t('addDept')}</button>`)+(S.departments.length?
+  `<div class="tablewrap"><table><thead><tr><th>${t('deptName')}</th><th>${t('manager')}</th><th class="num">${t('staffCount')}</th><th></th></tr></thead><tbody>
+  ${S.departments.map(d=>`<tr><td><b>${esc(d.name)}</b></td><td>${esc(emp(d.managerId)?.name||'—')}</td><td class="num">${S.employees.filter(e=>e.deptId===d.id).length}</td>
+  <td><div class="rowactions"><button class="btn sm" data-act="editDept" data-id="${d.id}">${t('edit')}</button><button class="btn sm danger" data-act="delDept" data-id="${d.id}">${t('delete')}</button></div></td></tr>`).join('')}
+  </tbody></table></div>`:`<div class="emptystate"><p>${t('noDepts')}</p><button class="btn primary" data-act="addDept">${t('addDept')}</button></div>`);
+};
+
+R.attendance=()=>{
+  const d=ui.attDate, rec=S.attendance[d]||{}, act=activeEmps();
+  const tools=`<input type="date" id="attDate" value="${d}" style="width:170px"><button class="btn primary" data-act="allPresent">${t('markAllPresent')}</button>`;
+  const counts={present:0,late:0,absent:0,leave:0};
+  act.forEach(e=>{if(onLeave(e.id,d))counts.leave++;else if(rec[e.id])counts[rec[e.id]]++;});
+  $('#main').innerHTML=header(t('attendance'),`${fmtDate(d)} — ${t('present')} ${counts.present} · ${t('late')} ${counts.late} · ${t('absent')} ${counts.absent} · ${t('onLeave')} ${counts.leave}`,tools)+(act.length?
+  `<div class="tablewrap"><table><thead><tr><th>${t('employee')}</th><th>${t('department')}</th><th>${t('status')}</th></tr></thead><tbody>
+  ${act.map(e=>`<tr><td><b>${esc(e.name)}</b><small>${esc(e.empNo||'')}</small></td><td>${esc(dept(e.deptId)?.name||'—')}</td><td>${onLeave(e.id,d)?`<span class="tag brand">${t('onLeave')}</span>`:
+    `<div class="seg" role="group">${['present','late','absent'].map(s=>`<button type="button" data-act="att" data-id="${e.id}" data-s="${s}" class="${rec[e.id]===s?'on':''}" aria-pressed="${rec[e.id]===s}">${t(s)}</button>`).join('')}</div>`}</td></tr>`).join('')}
+  </tbody></table></div>`:`<div class="emptystate"><p>${t('noActive')}</p></div>`);
+  $('#attDate').onchange=e=>{ui.attDate=e.target.value||todayStr();R.attendance()};
+};
+
+R.leaves=()=>{
+  const f=ui.leaveFilter;
+  const rows=[...S.leaves].filter(l=>f==='all'||l.status===f).sort((a,b)=>b.created-a.created);
+  const tools=`<div class="seg">${['all','pending','approved','rejected'].map(s=>`<button type="button" data-act="lf" data-s="${s}" class="${f===s?'on':''}" style="${f===s?'background:var(--brand);color:var(--on-brand)':''}">${t(s==='pending'?'pendingS':s)}</button>`).join('')}</div>
+    <button class="btn primary" data-act="addLeave">${t('newRequest')}</button>`;
+  $('#main').innerHTML=header(t('leaves'),'',tools)+(rows.length?
+  `<div class="tablewrap"><table><thead><tr><th>${t('employee')}</th><th>${t('type')}</th><th>${t('from')}</th><th>${t('to')}</th><th class="num">${t('days')}</th><th>${t('status')}</th><th></th></tr></thead><tbody>
+  ${rows.map(l=>`<tr><td><b>${esc(emp(l.empId)?.name||'—')}</b>${l.note?`<small>${esc(l.note)}</small>`:''}</td><td>${leaveLabel(l.type)}</td><td>${fmtDate(l.from)}</td><td>${fmtDate(l.to)}</td><td class="num">${daysBetween(l.from,l.to)}</td><td>${statusTag(l.status)}</td>
+  <td><div class="rowactions">${l.status==='pending'?`<button class="btn sm" data-act="lApprove" data-id="${l.id}">${t('approve')}</button><button class="btn sm" data-act="lReject" data-id="${l.id}">${t('reject')}</button>`:''}<button class="btn sm danger" data-act="delLeave" data-id="${l.id}">${t('delete')}</button></div></td></tr>`).join('')}
+  </tbody></table></div>`:`<div class="emptystate"><p>${t('noLeaves')}</p><button class="btn primary" data-act="addLeave">${t('newRequest')}</button></div>`);
+};
+
+R.clock=()=>{
+  const act=activeEmps();
+  $('#main').innerHTML=`<div class="clockwrap">
+   <div class="clockface"><div class="time" id="liveClock"></div><div class="day" id="liveDay"></div></div>
+   <div class="clockcard">
+    <div class="field"><label for="cEmp">${t('employee')}</label><select id="cEmp"><option value="">${t('selectEmp')}</option>${act.map(e=>`<option value="${e.id}">${esc(e.name)}${e.empNo?' — '+esc(e.empNo):''}</option>`).join('')}</select></div>
+    <div class="field"><label for="cPin">${t('pin')}</label><input type="password" id="cPin" inputmode="numeric" autocomplete="off" maxlength="6"></div>
+    <div class="state" id="cState"></div>
+    <button type="button" class="clockbtn" id="cBtn" data-act="punch" disabled>${t('clockIn')}</button>
+    <div class="msg" id="cMsg" role="status"></div>
+   </div>
+   ${isKiosk()?`<div class="kioskbar"><button class="btn ghost" data-act="exitKiosk">${t('exitKiosk')}</button></div>`:''}
+  </div>`;
+  const draw=()=>{const n=new Date();$('#liveClock').textContent=fmtTime(n);$('#liveDay').textContent=fmtDate(todayStr(n))};
+  draw();tick=setInterval(draw,10000);
+  $('#cEmp').onchange=updateClockState;
+  $('#cPin').onkeydown=e=>{if(e.key==='Enter'&&!$('#cBtn').disabled)doPunch()};
+};
+function updateClockState(){
+  const id=$('#cEmp').value,btn=$('#cBtn'),st=$('#cState');
+  if(!id){btn.disabled=true;st.textContent='';btn.textContent=t('clockIn');btn.classList.remove('out');return}
+  const lp=lastPunch(id),isIn=lp&&lp.type==='in',l=locById(emp(id).locId);
+  st.textContent=(isIn?tf('since',{t:fmtTime(lp.ts)}):t('notIn'))+(l?' — '+l.name:'');
+  btn.disabled=false;btn.textContent=t(isIn?'clockOut':'clockIn');btn.classList.toggle('out',!!isIn);
+}
+function showMsg(kind,text){const m=$('#cMsg');m.className='msg show '+kind;m.textContent=text}
+async function doPunch(){
+  const id=$('#cEmp').value,e=emp(id);if(!e)return;
+  if(e.pin&&$('#cPin').value!==String(e.pin)){showMsg('bad',t('wrongPin'));return}
+  const locs=e.locId&&locById(e.locId)?[locById(e.locId)]:(S.settings.locations||[]);
+  if(!locs.length){showMsg('bad',t('noLocs'));return}
+  const btn=$('#cBtn');btn.disabled=true;showMsg('info',t('locating'));
+  const maxAcc=num(S.settings.maxAcc)||50;
+  let pos;try{pos=await getBestPos(maxAcc)}catch(err){showMsg('bad',t(err&&err.code===1?'geoDenied':'geoFail'));updateClockState();return}
+  if(pos.accuracy>maxAcc){showMsg('bad',tf('lowAcc',{a:Math.round(pos.accuracy),m:maxAcc}));updateClockState();return}
+  const near=locs.map(l=>({l,d:distM(pos.latitude,pos.longitude,num(l.lat),num(l.lng))})).sort((a,b)=>a.d-b.d)[0];
+  if(near.d>num(near.l.radius)){showMsg('bad',tf('tooFar',{d:Math.round(near.d),l:near.l.name,r:near.l.radius}));updateClockState();return}
+  const lp=lastPunch(id),type=lp&&lp.type==='in'?'out':'in',now=Date.now();
+  S.punches.push({id:uid(),empId:id,type,ts:now,lat:+pos.latitude.toFixed(6),lng:+pos.longitude.toFixed(6),acc:Math.round(pos.accuracy),dist:Math.round(near.d),locId:near.l.id});
+  if(type==='in'){const d=todayStr(),rec=S.attendance[d]=S.attendance[d]||{};
+    if(!rec[id]){const [hh,mm]=(e.shiftStart||S.settings.shiftStart||'09:00').split(':').map(Number);const lim=new Date();lim.setHours(hh,mm+num(S.settings.grace),0,0);rec[id]=now>lim.getTime()?'late':'present'}}
+  persist();
+  showMsg('ok',type==='in'?tf('clockedIn',{n:e.name,t:fmtTime(now)}):tf('clockedOut',{n:e.name,t:fmtTime(now),h:hrs((now-lp.ts)/36e5)}));
+  $('#cPin').value='';updateClockState();
+  if(isKiosk())setTimeout(()=>{if($('#cEmp')){$('#cEmp').value='';updateClockState()}},6000);
+}
+
+R.timelog=()=>{
+  const m=ui.tlMonth,f=ui.tlEmp,all=buildSessions();
+  const tools=`<input type="month" id="tlMonth" value="${m}" style="width:180px">
+   <select id="tlEmp" style="width:200px"><option value="">${t('allEmps')}</option>${S.employees.map(e=>`<option value="${e.id}" ${f===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}</select>
+   <button class="btn primary" data-act="addPunch">${t('addPunch')}</button>`;
+  const stats=S.employees.filter(e=>!f||e.id===f).map(e=>[e,monthStats(e.id,m,all)]).filter(([,s])=>s.days||s.missing);
+  const rows=all.filter(s=>s.date.startsWith(m)&&(!f||s.empId===f));
+  const pt=p=>p?fmtTime(p.ts)+(p.manual?` <span class="tag" title="${esc(p.note||'')}">${t('manual')}</span>`:''):'';
+  $('#main').innerHTML=header(t('timelog'),monthLabel(m),tools)+(rows.length?
+  `<div class="tablewrap"><table><thead><tr><th>${t('employee')}</th><th class="num">${t('daysWorked')}</th><th class="num">${t('worked')}</th><th class="num">${t('expected')}</th><th class="num">${t('overtime')}</th><th class="num">${t('shortHours')}</th><th>${t('missing')}</th></tr></thead><tbody>
+   ${stats.map(([e,s])=>`<tr><td><b>${esc(e.name)}</b></td><td class="num">${s.days}</td><td class="num">${hrs(s.worked)} ${t('h')}</td><td class="num">${hrs(s.expected)} ${t('h')}</td><td class="num">${s.ot?`<span class="tag ok">+${hrs(s.ot)}</span>`:'—'}</td><td class="num">${s.short?`<span class="tag warn">−${hrs(s.short)}</span>`:'—'}</td><td>${s.missing?`<span class="tag bad">${s.missing}</span>`:'—'}</td></tr>`).join('')}
+  </tbody></table></div>
+  <h3 class="sub">${t('sessions')}</h3>
+  <div class="tablewrap"><table><thead><tr><th>${t('date')}</th><th>${t('employee')}</th><th>${t('inTime')}</th><th>${t('outTime')}</th><th class="num">${t('hours')}</th><th>${t('workLoc')}</th><th>${t('accuracy')}</th><th></th></tr></thead><tbody>
+   ${rows.map(s=>{const p=s.inP||s.outP;return `<tr><td>${fmtDate(s.date)}</td><td>${esc(emp(s.empId)?.name||'—')}</td>
+    <td>${s.inP?pt(s.inP):`<span class="tag bad">${t('missingIn')}</span>`}</td>
+    <td>${s.outP?pt(s.outP):`<span class="tag bad">${t('missingOut')}</span>`}</td>
+    <td class="num">${s.hours?hrs(s.hours):'—'}</td>
+    <td>${esc(locById(p.locId)?.name||'—')}${p.dist!=null?`<small>${p.dist} m</small>`:''}</td>
+    <td>${p.acc!=null?'±'+p.acc+' m':'—'}</td>
+    <td><div class="rowactions"><button class="btn sm danger" data-act="delSession" data-ids="${[s.inP&&s.inP.id,s.outP&&s.outP.id].filter(Boolean).join(',')}">${t('delete')}</button></div></td></tr>`}).join('')}
+  </tbody></table></div>`:`<div class="emptystate"><p>${t('noPunches')}</p><button class="btn primary" data-act="addPunch">${t('addPunch')}</button></div>`);
+  $('#tlMonth').onchange=e=>{ui.tlMonth=e.target.value||todayStr().slice(0,7);R.timelog()};
+  $('#tlEmp').onchange=e=>{ui.tlEmp=e.target.value;R.timelog()};
+};
+
+R.payroll=()=>{
+  const m=ui.payMonth, act=activeEmps();
+  const tools=`<input type="month" id="payMonth" value="${m}" style="width:180px"><button class="btn" data-act="csv">${t('exportCsv')}</button>`;
+  const allS=buildSessions();const calc=act.map(e=>[e,calcPay(e,m,allS)]);
+  const sum=k=>calc.reduce((a,[,c])=>a+c[k],0);
+  $('#main').innerHTML=header(t('payroll'),monthLabel(m)+' — '+t('dedRuleNote'),tools)+(act.length?
+  `<div class="tablewrap"><table><thead><tr><th>${t('employee')}</th><th class="num">${t('gross')}</th><th class="num">${t('absenceDed')}</th><th class="num">${t('unpaidDed')}</th><th class="num">${t('gosi')}</th><th class="num">${t('otPay')}</th><th class="num">${t('shortDed')}</th><th class="num">${t('additions')}</th><th class="num">${t('deductions')}</th><th class="num">${t('net')}</th><th></th></tr></thead><tbody>
+  ${calc.map(([e,c])=>`<tr><td><b>${esc(e.name)}</b><small>${esc(e.empNo||'')}</small></td><td class="num">${money(c.gross)}</td>
+    <td class="num">${c.absenceDed?money(-c.absenceDed)+`<small>${c.absent} ${t('days')}</small>`:'—'}</td>
+    <td class="num">${c.unpaidDed?money(-c.unpaidDed)+`<small>${c.unpaidDays} ${t('days')}</small>`:'—'}</td>
+    <td class="num">${c.gosi?money(-c.gosi):'—'}</td>
+    <td class="num">${c.otPay?money(c.otPay)+`<small>${hrs(c.otH)} ${t('h')}</small>`:'—'}</td>
+    <td class="num">${c.shortDed?money(-c.shortDed)+`<small>${hrs(c.shortH)} ${t('h')}</small>`:'—'}</td>
+    <td class="num"><input type="number" min="0" step="0.01" data-adj="add" data-id="${e.id}" value="${c.add||''}" aria-label="${t('additions')}"></td>
+    <td class="num"><input type="number" min="0" step="0.01" data-adj="ded" data-id="${e.id}" value="${c.ded||''}" aria-label="${t('deductions')}"></td>
+    <td class="num"><b data-net="${e.id}">${money(c.net)}</b></td>
+    <td><button class="btn sm" data-act="slip" data-id="${e.id}">${t('payslip')}</button></td></tr>`).join('')}
+  </tbody><tfoot><tr><td>${t('total')}</td><td class="num">${money(sum('gross'))}</td><td class="num">${money(-sum('absenceDed'))}</td><td class="num">${money(-sum('unpaidDed'))}</td><td class="num">${money(-sum('gosi'))}</td><td class="num">${money(sum('otPay'))}</td><td class="num">${money(-sum('shortDed'))}</td><td class="num">${money(sum('add'))}</td><td class="num">${money(-sum('ded'))}</td><td class="num" id="netTotal">${money(sum('net'))}</td><td></td></tr></tfoot></table></div>`
+  :`<div class="emptystate"><p>${t('noPay')}</p></div>`);
+  $('#payMonth').onchange=e=>{ui.payMonth=e.target.value||todayStr().slice(0,7);R.payroll()};
+  document.querySelectorAll('[data-adj]').forEach(inp=>inp.onchange=()=>{
+    const p=S.payroll[m]=S.payroll[m]||{}; const r=p[inp.dataset.id]=p[inp.dataset.id]||{};
+    r[inp.dataset.adj]=num(inp.value); persist(); R.payroll();
+  });
+};
+
+R.settings=()=>{
+  const s=S.settings;
+  $('#main').innerHTML=header(t('settings'),'')+`<div class="settings">
+  <section><h2>${t('branding')}</h2><p class="hint">${t('brandingHint')}</p>
+    <div class="grid2">
+      <div class="field full"><label>${t('companyName')}</label><input type="text" id="sCompany" value="${esc(s.company)}"></div>
+      <div class="field full"><label>${t('logo')}</label><div class="logoprev">${s.logo?`<img src="${s.logo}" alt="">`:''}
+        <label class="btn">${t('uploadLogo')}<input type="file" id="sLogo" accept="image/*" hidden></label>
+        ${s.logo?`<button class="btn danger" data-act="rmLogo">${t('removeLogo')}</button>`:''}</div></div>
+      <div class="field"><label>${t('brandColor')}</label><input type="color" id="sColor" value="${esc(s.color)}"></div>
+      <div class="field"><label>${t('language')}</label><select id="sLang"><option value="en">English</option><option value="ar" ${s.lang==='ar'?'selected':''}>العربية</option></select></div>
+      <div class="field"><label>${t('currency')}</label><input type="text" id="sCur" maxlength="6" value="${esc(s.currency)}"></div>
+    </div></section>
+  <section><h2>${t('payrollRules')}</h2><p class="hint">${t('dedRuleNote')}</p>
+    <div class="grid2"><div class="field"><label>${t('gosiRate')}</label><input type="number" id="sGosi" min="0" max="100" step="0.01" value="${esc(s.gosiRate)}"></div></div></section>
+  <section><h2>${t('locations')}</h2><p class="hint">${t('locationsHint')}</p>
+    ${(s.locations||[]).length?`<div class="tablewrap" style="margin-bottom:14px"><table><thead><tr><th>${t('locName')}</th><th>${t('lat')} / ${t('lng')}</th><th class="num">${t('radius')}</th><th></th></tr></thead><tbody>
+    ${s.locations.map(l=>`<tr><td><b>${esc(l.name)}</b></td><td><a href="https://maps.google.com/?q=${l.lat},${l.lng}" target="_blank" rel="noopener">${l.lat}, ${l.lng}</a></td><td class="num">${l.radius}</td>
+    <td><div class="rowactions"><button class="btn sm" data-act="editLoc" data-id="${l.id}">${t('edit')}</button><button class="btn sm danger" data-act="delLoc" data-id="${l.id}">${t('delete')}</button></div></td></tr>`).join('')}</tbody></table></div>`:`<p class="hint">${t('noLocsYet')}</p>`}
+    <button class="btn primary" data-act="addLoc">${t('addLoc')}</button></section>
+  <section><h2>${t('timeRules')}</h2><p class="hint">${t('timeRulesHint')}</p>
+    <div class="grid2">
+      <div class="field"><label>${t('maxAcc')}</label><input type="number" id="sAcc" min="5" value="${esc(s.maxAcc)}"></div>
+      <div class="field"><label>${t('dailyHours')}</label><input type="number" id="sDh" min="1" max="24" step="0.5" value="${esc(s.dailyHours)}"></div>
+      <div class="field"><label>${t('shiftStart')}</label><input type="time" id="sShift" value="${esc(s.shiftStart)}"></div>
+      <div class="field"><label>${t('grace')}</label><input type="number" id="sGrace" min="0" value="${esc(s.grace)}"></div>
+      <label class="check"><input type="checkbox" id="sPayOt" ${s.payOt?'checked':''}> ${t('payOt')}</label>
+      <label class="check"><input type="checkbox" id="sShort" ${s.deductShort?'checked':''}> ${t('deductShort')}</label>
+    </div></section>
+  <section><h2>${t('openKiosk')}</h2><p class="hint">${t('kioskHint')}</p>
+    <div class="grid2"><div class="field"><label>${t('adminPin')}</label><input type="password" id="sAdmin" inputmode="numeric" maxlength="8" autocomplete="off" value="${esc(s.adminPin)}"></div>
+    <div class="field" style="justify-content:flex-end"><button class="btn primary" data-act="kiosk">${t('openKiosk')}</button></div></div></section>
+  <section><h2>${t('backup')}</h2><p class="hint">${t('backupHint')}</p>
+    <div class="tools"><button class="btn" data-act="exportJson">${t('exportData')}</button>
+    <label class="btn">${t('importData')}<input type="file" id="sImport" accept="application/json,.json" hidden></label>
+    <button class="btn danger" data-act="reset">${t('resetData')}</button></div></section>
+  </div>`;
+  const saveS=(k,v)=>{S.settings[k]=v;persist();applyTheme();renderNav();toast(t('saved'))};
+  $('#sCompany').onchange=e=>saveS('company',e.target.value.trim());
+  $('#sColor').oninput=e=>{S.settings.color=e.target.value;applyTheme()};
+  $('#sColor').onchange=e=>saveS('color',e.target.value);
+  $('#sLang').onchange=e=>{S.settings.lang=e.target.value;persist();render()};
+  $('#sCur').onchange=e=>saveS('currency',e.target.value.trim()||'SAR');
+  $('#sGosi').onchange=e=>saveS('gosiRate',num(e.target.value));
+  $('#sAcc').onchange=e=>saveS('maxAcc',num(e.target.value)||50);
+  $('#sDh').onchange=e=>saveS('dailyHours',num(e.target.value)||8);
+  $('#sShift').onchange=e=>saveS('shiftStart',e.target.value||'09:00');
+  $('#sGrace').onchange=e=>saveS('grace',num(e.target.value));
+  $('#sPayOt').onchange=e=>saveS('payOt',e.target.checked);
+  $('#sShort').onchange=e=>saveS('deductShort',e.target.checked);
+  $('#sAdmin').onchange=e=>saveS('adminPin',e.target.value.trim());
+  $('#sLogo').onchange=e=>{const f=e.target.files[0];if(!f)return;if(f.size>500*1024){toast(t('logoTooBig'));return}
+    const r=new FileReader();r.onload=()=>{S.settings.logo=r.result;persist();render();toast(t('saved'))};r.readAsDataURL(f)};
+  $('#sImport').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{
+    try{const d=JSON.parse(r.result);if(!d||!Array.isArray(d.employees)||!d.settings)throw 0;
+      S=Object.assign(blank(),d,{settings:Object.assign(blank().settings,d.settings,{setupDone:true})});persist();render();toast(t('restored'))}
+    catch(err){toast(t('badBackup'))}};r.readAsText(f)};
+};
+
+/* ---------- Modal ---------- */
+let modalSave=null;
+function openModal(title,body,onSave,saveLabel){
+  $('#modalTitle').textContent=title;$('#modalBody').innerHTML=body+'<div class="err" id="mErr"></div>';
+  $('#modalFoot').innerHTML=`<button type="button" class="btn" data-close>${t('cancel')}</button><button type="submit" class="btn primary">${saveLabel||t('save')}</button>`;
+  modalSave=onSave;$('#overlay').classList.add('open');
+  setTimeout(()=>{const f=$('#modalBody').querySelector('input,select');f&&f.focus()},30);
+}
+function closeModal(){$('#overlay').classList.remove('open');modalSave=null}
+$('#modalForm').onsubmit=e=>{e.preventDefault();
+  const form=e.target;const missing=[...form.querySelectorAll('[required]')].some(i=>!i.value.trim());
+  if(missing){$('#mErr').textContent=t('required');return}
+  const data=Object.fromEntries(new FormData(form));form.querySelectorAll('input[type=checkbox]').forEach(c=>data[c.name]=c.checked);
+  const err=modalSave&&modalSave(data);if(err){$('#mErr').textContent=err;return}
+  closeModal();persist();render();toast(t('saved'));
+};
+$('#overlay').addEventListener('click',e=>{if(e.target.id==='overlay'||e.target.closest('[data-close]'))closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#overlay').classList.contains('open'))closeModal()});
+
+/* ---------- Payslip ---------- */
+function printSlip(id){
+  const e=emp(id),m=ui.payMonth,c=calcPay(e,m),s=S.settings;
+  const row=(k,v)=>`<tr><td>${k}</td><td style="text-align:end">${money(v)}</td></tr>`;
+  $('#printArea').innerHTML=`<div class="slip" dir="${s.lang==='ar'?'rtl':'ltr'}">
+    <div class="top"><div><h2>${esc(s.company)}</h2><div style="color:var(--muted)">${t('payslip')} — ${monthLabel(m)}</div></div>${s.logo?`<img src="${s.logo}" alt="">`:''}</div>
+    <div class="meta"><div><span>${t('employee')}:</span> ${esc(e.name)}</div><div><span>${t('empNo')}:</span> ${esc(e.empNo||'—')}</div>
+      <div><span>${t('jobTitle')}:</span> ${esc(e.jobTitle||'—')}</div><div><span>${t('department')}:</span> ${esc(dept(e.deptId)?.name||'—')}</div>
+      <div><span>${t('idNo')}:</span> ${esc(e.idNo||'—')}</div><div><span>${t('period')}:</span> ${monthLabel(m)}</div></div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:12px"><thead><tr><th colspan="2" style="text-align:start">${t('earnings')}</th></tr></thead><tbody>
+      ${row(t('basic'),e.basic)}${num(e.housing)?row(t('housing'),e.housing):''}${num(e.transport)?row(t('transport'),e.transport):''}${num(e.other)?row(t('otherAllow'),e.other):''}${c.otPay?row(t('otPay')+` (${hrs(c.otH)} ${t('h')})`,c.otPay):''}${c.add?row(t('additions'),c.add):''}</tbody></table>
+    <table style="width:100%;border-collapse:collapse"><thead><tr><th colspan="2" style="text-align:start">${t('deductions')}</th></tr></thead><tbody>
+      ${c.absenceDed?row(t('absenceDed')+` (${c.absent} ${t('days')})`,c.absenceDed):''}${c.unpaidDed?row(t('unpaidDed')+` (${c.unpaidDays} ${t('days')})`,c.unpaidDed):''}${c.gosi?row(t('gosi'),c.gosi):''}${c.shortDed?row(t('shortDed')+` (${hrs(c.shortH)} ${t('h')})`,c.shortDed):''}${c.ded?row(t('deductions'),c.ded):''}
+      ${!(c.absenceDed||c.unpaidDed||c.gosi||c.ded||c.shortDed)?`<tr><td colspan="2">—</td></tr>`:''}</tbody></table>
+    <div class="netline"><span>${t('net')}</span><span>${money(c.net)}</span></div>
+    <div class="sign"><div>${t('signature')}</div><div>${t('approverSig')}</div></div></div>`;
+  document.body.classList.add('printing');window.print();setTimeout(()=>document.body.classList.remove('printing'),300);
+}
+
+/* ---------- Actions ---------- */
+document.addEventListener('click',e=>{
+  const nv=e.target.closest('[data-view]');if(nv){view=nv.dataset.view;render();window.scrollTo(0,0);return}
+  const b=e.target.closest('[data-act]');if(!b)return;const id=b.dataset.id,a=b.dataset.act;
+  if(a==='addEmp'||a==='editEmp'){const ex=a==='editEmp'?emp(id):null;
+    openModal(t(ex?'editEmployee':'addEmployee'),empForm(ex||{}),d=>{
+      const rec={...d,basic:num(d.basic),housing:num(d.housing),transport:num(d.transport),other:num(d.other),annualDays:num(d.annualDays),dailyHours:num(d.dailyHours)};
+      if(ex)Object.assign(ex,rec);else S.employees.push({id:uid(),...rec});});}
+  if(a==='delEmp'&&confirm(t('confirmDelete'))){S.employees=S.employees.filter(x=>x.id!==id);S.leaves=S.leaves.filter(l=>l.empId!==id);
+    S.departments.forEach(d=>{if(d.managerId===id)d.managerId=''});persist();render();}
+  if(a==='addDept'||a==='editDept'){const ex=a==='editDept'?dept(id):null;
+    openModal(t(ex?'editDept':'addDept'),`<div class="grid2"><div class="field full"><label>${t('deptName')} *</label><input type="text" name="name" required value="${esc(ex?.name||'')}"></div>
+      <div class="field full"><label>${t('manager')}</label><select name="managerId"><option value="">${t('none')}</option>${activeEmps().map(x=>`<option value="${x.id}" ${ex?.managerId===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div></div>`,
+      d=>{if(ex)Object.assign(ex,d);else S.departments.push({id:uid(),...d});});}
+  if(a==='delDept'){if(S.employees.some(x=>x.deptId===id)){toast(t('deptInUse'));return}
+    if(confirm(t('confirmDelete'))){S.departments=S.departments.filter(x=>x.id!==id);persist();render();}}
+  if(a==='att'){const rec=S.attendance[ui.attDate]=S.attendance[ui.attDate]||{};rec[id]=rec[id]===b.dataset.s?undefined:b.dataset.s;
+    if(!rec[id])delete rec[id];persist();R.attendance();}
+  if(a==='allPresent'){const rec=S.attendance[ui.attDate]=S.attendance[ui.attDate]||{};
+    activeEmps().forEach(x=>{if(!onLeave(x.id,ui.attDate)&&!rec[x.id])rec[x.id]='present'});persist();R.attendance();}
+  if(a==='lf'){ui.leaveFilter=b.dataset.s;R.leaves();}
+  if(a==='addLeave'){const td=todayStr();
+    openModal(t('newRequest'),`<div class="grid2">
+      <div class="field full"><label>${t('employee')} *</label><select name="empId" required><option value="">${t('selectEmp')}</option>${activeEmps().map(x=>`<option value="${x.id}">${esc(x.name)} — ${t('leaveBalance')}: ${num(x.annualDays)-annualUsed(x.id,new Date().getFullYear())}</option>`).join('')}</select></div>
+      <div class="field"><label>${t('type')}</label><select name="type">${leaveTypes.map(ty=>`<option value="${ty}">${leaveLabel(ty)}</option>`).join('')}</select></div>
+      <div class="field"><label>${t('status')}</label><select name="status"><option value="pending">${t('pendingS')}</option><option value="approved">${t('approved')}</option></select></div>
+      <div class="field"><label>${t('from')} *</label><input type="date" name="from" required value="${td}"></div>
+      <div class="field"><label>${t('to')} *</label><input type="date" name="to" required value="${td}"></div>
+      <div class="field full"><label>${t('note')}</label><textarea name="note"></textarea></div></div>`,
+      d=>{if(d.to<d.from)return t('dateOrder');S.leaves.push({id:uid(),created:Date.now(),...d});});}
+  if(a==='lApprove'||a==='lReject'){const l=S.leaves.find(x=>x.id===id);l.status=a==='lApprove'?'approved':'rejected';persist();R.leaves();toast(t(l.status));}
+  if(a==='delLeave'&&confirm(t('confirmDelete'))){S.leaves=S.leaves.filter(x=>x.id!==id);persist();R.leaves();}
+  if(a==='punch')doPunch();
+  if(a==='kiosk')location.hash='kiosk';
+  if(a==='exitKiosk'){const p=S.settings.adminPin;if(p&&prompt(t('enterAdminPin'))!==p){toast(t('wrongPin'));return}
+    history.replaceState(null,'',location.pathname+location.search);view='dashboard';render();}
+  if(a==='addLoc'||a==='editLoc'){const ex=a==='editLoc'?locById(id):null;
+    openModal(ex?ex.name:t('addLoc'),`<div class="grid2">
+      <div class="field full"><label>${t('locName')} *</label><input type="text" name="name" required value="${esc(ex?.name||'')}"></div>
+      <div class="field"><label>${t('lat')} *</label><input type="text" name="lat" inputmode="decimal" required value="${esc(ex?.lat??'')}"></div>
+      <div class="field"><label>${t('lng')} *</label><input type="text" name="lng" inputmode="decimal" required value="${esc(ex?.lng??'')}"></div>
+      <div class="field"><label>${t('radius')} *</label><input type="number" name="radius" min="10" required value="${esc(ex?.radius??100)}"></div>
+      <div class="field" style="justify-content:flex-end"><button type="button" class="btn" data-act="hereLoc">${t('useHere')}</button></div>
+      <div class="field full" id="hereMsg" style="color:var(--muted);font-size:13.5px"></div></div>`,
+      d=>{const lat=parseFloat(d.lat),lng=parseFloat(d.lng);if(!(lat>=-90&&lat<=90&&lng>=-180&&lng<=180))return t('invalidCoords');
+        const rec={name:d.name.trim(),lat:+lat.toFixed(6),lng:+lng.toFixed(6),radius:Math.max(10,num(d.radius))};
+        S.settings.locations=S.settings.locations||[];if(ex)Object.assign(ex,rec);else S.settings.locations.push({id:uid(),...rec});});}
+  if(a==='hereLoc'){const msg=$('#hereMsg');msg.textContent=t('locating');b.disabled=true;
+    getBestPos(15,20000).then(p=>{const f=$('#modalForm');f.elements.lat.value=p.latitude.toFixed(6);f.elements.lng.value=p.longitude.toFixed(6);msg.textContent=tf('gotHere',{a:Math.round(p.accuracy)})})
+    .catch(err=>{msg.textContent=t(err&&err.code===1?'geoDenied':'geoFail')}).finally(()=>{b.disabled=false});}
+  if(a==='delLoc'&&confirm(t('confirmDelete'))){S.settings.locations=S.settings.locations.filter(l=>l.id!==id);S.employees.forEach(x=>{if(x.locId===id)x.locId=''});persist();render();}
+  if(a==='addPunch'){
+    openModal(t('addPunch'),`<div class="grid2">
+      <div class="field full"><label>${t('employee')} *</label><select name="empId" required><option value="">${t('selectEmp')}</option>${S.employees.map(x=>`<option value="${x.id}" ${ui.tlEmp===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
+      <div class="field"><label>${t('punchType')}</label><select name="type"><option value="in">${t('clockIn')}</option><option value="out">${t('clockOut')}</option></select></div>
+      <div class="field"><label>${t('date')} *</label><input type="date" name="date" required value="${todayStr()}"></div>
+      <div class="field"><label>${t('time')} *</label><input type="time" name="time" required></div>
+      <div class="field"><label>${t('note')}</label><input type="text" name="note"></div></div>`,
+      d=>{S.punches.push({id:uid(),empId:d.empId,type:d.type,ts:new Date(d.date+'T'+d.time).getTime(),manual:true,note:d.note,locId:emp(d.empId)?.locId||''});});}
+  if(a==='delSession'&&confirm(t('confirmDelete'))){const ids=b.dataset.ids.split(',');S.punches=S.punches.filter(p=>!ids.includes(p.id));persist();R.timelog();}
+  if(a==='slip')printSlip(id);
+  if(a==='csv'){const m=ui.payMonth;const head=[t('empNo'),t('employee'),t('idNo'),t('gross'),t('absenceDed'),t('unpaidDed'),t('gosi'),t('otPay'),t('shortDed'),t('additions'),t('deductions'),t('net')];
+    const q=v=>'"'+String(v).replace(/"/g,'""')+'"';const f=n=>num(n).toFixed(2);
+    const allS=buildSessions();const lines=[head.map(q).join(',')].concat(activeEmps().map(x=>{const c=calcPay(x,m,allS);return [x.empNo||'',x.name,x.idNo||'',f(c.gross),f(c.absenceDed),f(c.unpaidDed),f(c.gosi),f(c.otPay),f(c.shortDed),f(c.add),f(c.ded),f(c.net)].map(q).join(',')}));
+    download(`payroll-${m}.csv`,'\uFEFF'+lines.join('\r\n'),'text/csv;charset=utf-8');}
+  if(a==='rmLogo'){S.settings.logo='';persist();render();}
+  if(a==='exportJson')download(`hr-backup-${todayStr()}.json`,JSON.stringify(S,null,2),'application/json');
+  if(a==='reset'&&confirm(t('resetConfirm'))){const keep=S.settings;S=blank();S.settings=keep;persist();render();toast(t('erased'));}
+});
+
+/* ---------- First-run setup ---------- */
+function showSetup(){
+  const f=$('#setupForm');f.company.value=S.settings.company;f.lang.value=S.settings.lang;f.currency.value=S.settings.currency;f.color.value=S.settings.color;
+  $('#setup').classList.add('open');applyTheme();
+  f.lang.onchange=()=>{S.settings.lang=f.lang.value;applyTheme()};
+  f.color.oninput=()=>{S.settings.color=f.color.value;applyTheme()};
+  f.onsubmit=e=>{e.preventDefault();if(!f.company.value.trim()){$('#setupErr').textContent=t('required');return}
+    Object.assign(S.settings,{company:f.company.value.trim(),lang:f.lang.value,currency:f.currency.value.trim()||'SAR',color:f.color.value,setupDone:true});
+    persist();$('#setup').classList.remove('open');render();};
+}
+
+window.addEventListener('hashchange',render);
+render();
+if(!S.settings.setupDone)showSetup();
+</script>
+</body>
+</html>
