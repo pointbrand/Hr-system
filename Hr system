@@ -271,8 +271,8 @@ h3.sub{font-size:16px;margin:28px 0 12px}
    Supabase Dashboard > Project Settings > API
    ========================================================= */
 const CONFIG = {
-  supabaseUrl: 'https://YOUR-PROJECT-REF.supabase.co',
-  supabaseAnonKey: 'YOUR-ANON-PUBLIC-KEY',
+  supabaseUrl: 'https://gxfvywzqilnpqykinecl.supabase.co',
+  supabaseAnonKey: 'sb_publishable_QJnBp4h1X9JA-j3sDZ0LYw_gYiJXPCu',
   productName: 'HR System'
 };
 
