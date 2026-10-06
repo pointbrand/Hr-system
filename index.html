@@ -385,10 +385,10 @@ const sb=configured?supabase.createClient(CONFIG.supabaseUrl,CONFIG.supabaseAnon
 
 /* ---------- State ---------- */
 const blankSettings=()=>({company:'',logo:'',color:'#1E5AA8',currency:'SAR',lang:'en',timezone:'Asia/Riyadh',gosiRate:9.75,maxAcc:50,dailyHours:8,shiftStart:'09:00',grace:15,payOt:true,deductShort:false,setupDone:false,locations:[]});
-let S={settings:blankSettings(),departments:[],employees:[],attendance:{},leaves:[],payroll:{},punches:[]};
+let S={settings:blankSettings(),departments:[],employees:[],attendance:{},leaves:[],payroll:{},punches:[],templates:[],shifts:[]};
 let role=null,me=null,myEmp=null,view='dashboard',tick=null,renderSeq=0;
 const loadedMonths=new Set();
-const ui={q:'',dept:'',attDate:todayStr(),leaveFilter:'all',payMonth:todayStr().slice(0,7),tlMonth:todayStr().slice(0,7),tlEmp:''};
+const ui={q:'',dept:'',attDate:todayStr(),leaveFilter:'all',payMonth:todayStr().slice(0,7),tlMonth:todayStr().slice(0,7),tlEmp:'',scheduleDate:todayStr()};
 
 /* ---------- Helpers ---------- */
 const $=s=>document.querySelector(s);
@@ -404,7 +404,7 @@ function daysBetween(a,b){return Math.round((parseD(b)-parseD(a))/864e5)+1}
 const loc=()=>lang()==='ar'?'ar-SA-u-ca-gregory-nu-latn':'en-GB';
 function money(n){return num(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+esc(S.settings.currency)}
 function fmtDate(s){if(!s)return '—';return parseD(s).toLocaleDateString(loc(),{day:'numeric',month:'short',year:'numeric'})}
-function fmtTime(ts){return new Date(ts).toLocaleTimeString(loc(),{hour:'2-digit',minute:'2-digit'})}
+function fmtTime(ts){return new Date(ts).toLocaleTimeString(loc(),{hour:'2-digit',minute:'2-digit',timeZone:S.settings.timezone||'Asia/Riyadh'})}
 function monthLabel(m){const [y,mo]=m.split('-').map(Number);return new Date(y,mo-1,1).toLocaleDateString(loc(),{month:'long',year:'numeric'})}
 const hrs=n=>(Math.round(n*100)/100).toFixed(2);
 const emp=id=>S.employees.find(e=>e.id===id);
@@ -436,20 +436,23 @@ const empFromDb=r=>({id:r.id,userId:r.user_id,name:r.name,empNo:r.emp_no||'',job
 const empToDb=d=>({name:d.name.trim(),emp_no:nz(d.empNo),job_title:nz(d.jobTitle),dept_id:nz(d.deptId),phone:nz(d.phone),email:nz((d.email||'').trim().toLowerCase()),
   nationality:nz(d.nationality),saudi:!!d.saudi,id_no:nz(d.idNo),id_expiry:nz(d.idExpiry),join_date:nz(d.joinDate),basic:num(d.basic),housing:num(d.housing),
   transport:num(d.transport),other:num(d.other),annual_days:num(d.annualDays),status:d.status||'active',location_id:nz(d.locId),shift_start:nz(d.shiftStart),daily_hours:num(d.dailyHours)||null});
-const punchFromDb=r=>({id:r.id,empId:r.employee_id,type:r.type,ts:Date.parse(r.ts),lat:r.lat,lng:r.lng,acc:r.acc,dist:r.dist,locId:r.location_id||'',manual:r.manual,note:r.note||''});
+const punchFromDb=r=>({id:r.id,shiftId:r.shift_id||'',empId:r.employee_id,type:r.type,ts:Date.parse(r.ts),lat:r.lat,lng:r.lng,acc:r.acc,dist:r.dist,locId:r.location_id||'',manual:r.manual,note:r.note||''});
 
 async function loadAll(){
-  const [st,locs,deps,emps,lvs,adj]=await Promise.all([
+  const [st,locs,deps,emps,lvs,adj,templates,shifts]=await Promise.all([
     q(sb.from('org_settings').select('*').eq('id',1).single()),
     fetchAll(()=>sb.from('locations').select('*').order('name')),
     fetchAll(()=>sb.from('departments').select('*').order('name')),
     fetchAll(()=>sb.from('employees').select('*').order('name')),
     fetchAll(()=>sb.from('leaves').select('*').order('created_at',{ascending:false})),
-    fetchAll(()=>sb.from('payroll_adj').select('*'))]);
+    fetchAll(()=>sb.from('payroll_adj').select('*')),
+    fetchAll(()=>sb.from('shift_templates').select('*').order('start_time')),
+    fetchAll(()=>sb.from('employee_shifts').select('*').order('starts_at'))]);
+  S.templates=templates;S.shifts=shifts;
   S.settings=Object.assign(blankSettings(),settingsFromDb(st),{locations:locs});
   S.departments=deps.map(r=>({id:r.id,name:r.name,managerId:r.manager_id||''}));
   S.employees=emps.map(empFromDb);
-  S.leaves=lvs.map(r=>({id:r.id,empId:r.employee_id,type:r.type,from:r.date_from,to:r.date_to,status:r.status,note:r.note||'',created:Date.parse(r.created_at)}));
+  S.leaves=lvs.map(r=>({id:r.id,shiftId:r.shift_id||'',empId:r.employee_id,type:r.type,from:r.date_from,to:r.date_to,status:r.status,note:r.note||'',created:Date.parse(r.created_at)}));
   S.payroll={};adj.forEach(r=>{(S.payroll[r.month]=S.payroll[r.month]||{})[r.employee_id]={add:num(r.add_amt),ded:num(r.ded_amt)}});
   S.punches=[];S.attendance={};loadedMonths.clear();
   myEmp=me?S.employees.find(e=>e.userId===me.id)||null:null;
@@ -472,21 +475,29 @@ function leaveDaysIn(l,from,to){const s=l.from>from?l.from:from,e=l.to<to?l.to:t
 function onLeave(empId,date){return S.leaves.some(l=>l.empId===empId&&l.status==='approved'&&l.from<=date&&l.to>=date)}
 function annualUsed(empId,year){return S.leaves.filter(l=>l.empId===empId&&l.status==='approved'&&l.type==='annual').reduce((a,l)=>a+leaveDaysIn(l,year+'-01-01',year+'-12-31'),0)}
 function buildSessions(){
-  const by={},out=[];
-  [...S.punches].sort((a,b)=>a.ts-b.ts).forEach(p=>(by[p.empId]=by[p.empId]||[]).push(p));
-  const mk=(empId,i,o)=>{const start=(i||o).ts;return {empId,inP:i,outP:o,start,date:todayStr(new Date(start)),hours:i&&o?(o.ts-i.ts)/36e5:0}};
-  for(const [eid,list] of Object.entries(by)){let open=null;
-    for(const p of list){if(p.type==='in'){if(open)out.push(mk(eid,open,null));open=p}else{out.push(mk(eid,open,p));open=null}}
-    if(open)out.push(mk(eid,open,null));}
+  const out=[],by={},scheduled={};
+  const mk=(empId,i,o,sh)=>{const start=(i||o).ts;return {empId,inP:i,outP:o,start,date:sh?.day||new Intl.DateTimeFormat('en-CA',{timeZone:S.settings.timezone}).format(new Date(start)),hours:i&&o?Math.max(0,(o.ts-i.ts)/36e5):0}};
+  [...S.punches].sort((a,b)=>a.ts-b.ts).forEach(p=>{if(p.shiftId){const x=scheduled[p.shiftId]??={};x[p.type]=p}else(by[p.empId]??=[]).push(p)});
+  for(const [sid,p] of Object.entries(scheduled))out.push(mk((p.in||p.out).empId,p.in,p.out,S.shifts.find(s=>s.id===sid)));
+  for(const [eid,list] of Object.entries(by)){let open=null;for(const p of list){if(p.type==='in'){if(open)out.push(mk(eid,open,null));open=p}else{out.push(mk(eid,open,p));open=null}}if(open)out.push(mk(eid,open,null))}
   return out.sort((a,b)=>b.start-a.start);
 }
 function dailyH(e){return num(e&&e.dailyHours)||num(S.settings.dailyHours)||8}
 function monthStats(empId,month,all){
-  const dh=dailyH(emp(empId)),days={};let missing=0;
-  (all||buildSessions()).filter(s=>s.empId===empId&&s.date.startsWith(month)).forEach(s=>{if(!s.inP||!s.outP)missing++;days[s.date]=(days[s.date]||0)+s.hours});
-  let worked=0,ot=0,short=0,n=0;
-  for(const h of Object.values(days)){if(h<=0)continue;n++;worked+=h;ot+=Math.max(0,h-dh);short+=Math.max(0,dh-h)}
-  return {days:n,worked,expected:n*dh,ot,short,missing};
+ const days={},planned={},dh=dailyH(emp(empId));let missing=0;
+ const shifts=S.shifts.filter(s=>s.employee_id===empId&&s.day.startsWith(month));
+ shifts.forEach(s=>{if(!onLeave(empId,s.day)){planned[s.day]=(planned[s.day]||0)+(Date.parse(s.ends_at)-Date.parse(s.starts_at))/36e5;days[s.day]=0}});
+ (all||buildSessions()).filter(s=>s.empId===empId&&s.date.startsWith(month)).forEach(s=>{if(!s.inP||!s.outP)missing++;days[s.date]=(days[s.date]||0)+s.hours});
+ let worked=0,ot=0,short=0,n=0,expected=0;
+ const now=Date.now();
+ for(const [day,h] of Object.entries(days)){
+  const target=planned[day]??dh;worked+=h;if(h>0)n++;expected+=target;
+  ot+=Math.max(0,h-target);
+  const ended=shifts.filter(s=>s.day===day).every(s=>Date.parse(s.ends_at)+s.out_after*60000<now);
+  if(ended)short+=Math.max(0,target-h);
+ }
+ for(const s of shifts){if(Date.parse(s.ends_at)+s.out_after*60000<now&&!onLeave(empId,s.day)&&!S.punches.some(p=>p.shiftId===s.id))missing++}
+ return {days:n,worked,expected,ot,short,missing};
 }
 function calcPay(e,month,all){
   const [y,m]=month.split('-').map(Number);
@@ -520,7 +531,7 @@ function applyTheme(){
   $('#outBtn').textContent=t('signOut');
   document.querySelectorAll('[data-t]').forEach(el=>el.textContent=t(el.dataset.t));
 }
-const views=()=>isAdmin()?['dashboard','employees','departments','attendance','timelog','leaves','payroll','settings']:['clock','timelog','leaves'];
+const views=()=>isAdmin()?['dashboard','employees','departments','attendance','schedule','timelog','leaves','payroll','settings']:['clock','schedule','timelog','leaves'];
 const navLabel=v=>!isAdmin()&&v==='timelog'?t('myHours'):!isAdmin()&&v==='leaves'?t('myLeave'):t(v);
 function renderNav(){$('#nav').innerHTML=views().map(v=>`<button type="button" data-view="${v}" class="${v===view?'on':''}" ${v===view?'aria-current="page"':''}>${navLabel(v)}</button>`).join('')}
 async function render(){
@@ -541,6 +552,18 @@ const leaveLabel=ty=>t(ty==='other'?'otherLeave':ty);
 
 /* ---------- Views ---------- */
 const R={};
+
+
+Object.assign(I18N.en,{schedule:'Shifts & schedule',addTemplate:'Add shift template',assignShift:'Assign shift',branchRequired:'Ask HR to assign your branch first.',outsideWindow:'No punch window is open. Check your assigned shift and buffers.',missingCheckout:'Your previous shift has a missing checkout. Ask HR to correct it before the next shift.',ambiguousShift:'Clock-in windows overlap. Ask HR to adjust the schedule.',shiftName:'Shift name',startTime:'Start',endTime:'End',inBefore:'Clock in: minutes before start',inAfter:'Clock in: minutes after start',outBefore:'Clock out: minutes before end',outAfter:'Clock out: minutes after end',scheduleHint:'Assign up to 3 shifts per employee per date. An end time earlier than the start means the next day. Times use the organization timezone. Assigned shifts keep a snapshot of branch and buffers.',templates:'Shift templates',assignedShifts:'Assigned shifts',punchWindow:'Punch windows',scheduleEmpty:'No shifts assigned for this date.'});
+Object.assign(I18N.ar,{schedule:'الورديات والجدول',addTemplate:'إضافة قالب وردية',assignShift:'تعيين وردية',branchRequired:'اطلب من الموارد البشرية تعيين فرعك أولاً.',outsideWindow:'التسجيل خارج الفترة المسموحة. راجع الوردية والسماحيات.',missingCheckout:'الوردية السابقة بدون انصراف. اطلب تصحيحها قبل الوردية التالية.',ambiguousShift:'فترات تسجيل الحضور متداخلة. اطلب تعديل الجدول.',shiftName:'اسم الوردية',startTime:'البداية',endTime:'النهاية',inBefore:'حضور: دقائق قبل البداية',inAfter:'حضور: دقائق بعد البداية',outBefore:'انصراف: دقائق قبل النهاية',outAfter:'انصراف: دقائق بعد النهاية',scheduleHint:'حتى ٣ ورديات للموظف في اليوم. النهاية قبل البداية تعني اليوم التالي. الأوقات حسب منطقة المنشأة الزمنية. الوردية المعينة تحفظ الفرع والسماحيات وقت التعيين.',templates:'قوالب الورديات',assignedShifts:'الورديات المعينة',punchWindow:'فترات التسجيل',scheduleEmpty:'لا توجد ورديات معينة لهذا التاريخ.'});
+function orgDay(){return new Intl.DateTimeFormat('en-CA',{timeZone:S.settings.timezone||'Asia/Riyadh'}).format(new Date())}
+function shiftStamp(ts,tz){return new Date(ts).toLocaleString(loc(),{timeZone:tz,month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+function scheduleTable(rows){return rows.length?`<div class="tablewrap"><table><thead><tr><th>${t('employee')}</th><th>${t('shiftName')}</th><th>${t('workLoc')}</th><th>${t('startTime')} → ${t('endTime')}</th><th>${t('punchWindow')}</th>${isAdmin()?'<th></th>':''}</tr></thead><tbody>${rows.map(s=>`<tr><td>${esc(emp(s.employee_id)?.name)}</td><td>${esc(s.name)}</td><td>${esc(locById(s.location_id)?.name)}</td><td>${esc(shiftStamp(s.starts_at,s.timezone))} → ${esc(shiftStamp(s.ends_at,s.timezone))}<small>${esc(s.timezone)}</small></td><td>${t('clockIn')}: ${fmtTime(Date.parse(s.starts_at)-s.in_before*60000)} – ${fmtTime(Date.parse(s.starts_at)+s.in_after*60000)}<br>${t('clockOut')}: ${fmtTime(Date.parse(s.ends_at)-s.out_before*60000)} – ${fmtTime(Date.parse(s.ends_at)+s.out_after*60000)}</td>${isAdmin()?`<td><button class="btn sm danger" data-act="delShift" data-id="${s.id}">${t('delete')}</button></td>`:''}</tr>`).join('')}</tbody></table></div>`:`<p>${t('scheduleEmpty')}</p>`}
+R.schedule=()=>{
+ const admin=isAdmin();
+ $('#main').innerHTML=header(t('schedule'),t('scheduleHint'),`<input type="date" id="scheduleDate" value="${ui.scheduleDate}">${admin?`<button class="btn" data-act="addTemplate">${t('addTemplate')}</button><button class="btn primary" data-act="assignShift">${t('assignShift')}</button>`:''}`)+`<h3>${t('assignedShifts')}</h3>`+scheduleTable(S.shifts.filter(s=>s.day===ui.scheduleDate))+(admin?`<h3>${t('templates')}</h3><div class="tablewrap"><table><thead><tr><th>${t('shiftName')}</th><th>${t('startTime')} → ${t('endTime')}</th><th>${t('clockIn')} / ${t('clockOut')} (min)</th><th></th></tr></thead><tbody>${S.templates.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.start_time.slice(0,5))} → ${esc(s.end_time.slice(0,5))}</td><td>−${s.in_before} / +${s.in_after} · −${s.out_before} / +${s.out_after}</td><td><button class="btn sm" data-act="editTemplate" data-id="${s.id}">${t('edit')}</button><button class="btn sm danger" data-act="delTemplate" data-id="${s.id}">${t('delete')}</button></td></tr>`).join('')}</tbody></table></div>`:'');
+ $('#scheduleDate').onchange=e=>{ui.scheduleDate=e.target.value||orgDay();R.schedule()};
+};
 
 R.dashboard=()=>{
   const today=todayStr(),month=today.slice(0,7),act=activeEmps(),rec=S.attendance[today]||{},allS=buildSessions();
@@ -634,7 +657,7 @@ R.clock=()=>{
     <div><b style="font-size:17px">${esc(myEmp.name)}</b><div class="state" id="cState">${t('loading')}</div></div>
     <button type="button" class="clockbtn" id="cBtn" data-act="punch" disabled>${t('clockIn')}</button>
     <div class="msg" id="cMsg" role="status"></div>
-   </div></div>`;
+   </div></div><div>${scheduleTable(S.shifts.filter(s=>s.employee_id===myEmp.id&&s.day===orgDay()))}</div>`;
   const draw=()=>{const n=new Date();$('#liveClock').textContent=fmtTime(n);$('#liveDay').textContent=fmtDate(todayStr(n))};
   draw();tick=setInterval(draw,10000);
   refreshClockState();
@@ -643,8 +666,9 @@ async function refreshClockState(){
   const st=$('#cState'),btn=$('#cBtn');if(!st||!myEmp)return;
   btn.disabled=true;
   try{
-    const [lp]=await q(sb.from('punches').select('type,ts').eq('employee_id',myEmp.id).order('ts',{ascending:false}).limit(1));
-    const isIn=lp&&lp.type==='in',l=locById(myEmp.locId);
+    const ps=await fetchAll(()=>sb.from('punches').select('type,ts,shift_id').eq('employee_id',myEmp.id).not('shift_id','is',null).order('ts',{ascending:false}));
+    const lp=ps.find(p=>p.type==='in'&&!ps.some(o=>o.type==='out'&&o.shift_id===p.shift_id));
+    const isIn=!!lp,l=locById(myEmp.locId);
     if(!$('#cState'))return;
     st.textContent=(isIn?tf('since',{t:fmtTime(Date.parse(lp.ts))}):t('notIn'))+(l?' — '+l.name:'');
     btn.textContent=t(isIn?'clockOut':'clockIn');btn.classList.toggle('out',!!isIn);btn.disabled=false;
@@ -660,7 +684,7 @@ async function doPunch(){
   try{
     const r=await q(sb.rpc('clock_punch',{p_lat:pos.latitude,p_lng:pos.longitude,p_acc:pos.accuracy}));
     if(!r.ok){
-      const msgs={low_acc:()=>tf('lowAcc',{a:r.acc,m:r.max}),too_far:()=>tf('tooFar',{d:r.dist,l:r.loc,r:r.radius}),no_locs:()=>t('noLocs'),no_employee:()=>t('notEmployee'),too_soon:()=>t('tooSoon')};
+      const msgs={low_acc:()=>tf('lowAcc',{a:r.acc,m:r.max}),too_far:()=>tf('tooFar',{d:r.dist,l:r.loc,r:r.radius}),no_locs:()=>t('noLocs'),no_employee:()=>t('notEmployee'),too_soon:()=>t('tooSoon'),branch_required:()=>t('branchRequired'),outside_window:()=>t('outsideWindow'),missing_checkout:()=>t('missingCheckout'),ambiguous_shift:()=>t('ambiguousShift')};
       showMsg('bad',(msgs[r.code]||(()=>r.code))());
     }else{
       const ts=Date.parse(r.ts);
@@ -840,6 +864,20 @@ document.addEventListener('click',async e=>{
   const nv=e.target.closest('[data-view]');if(nv){view=nv.dataset.view;render();window.scrollTo(0,0);return}
   const b=e.target.closest('[data-act]');if(!b)return;const id=b.dataset.id,a=b.dataset.act;
   try{
+
+  if(['addTemplate','editTemplate','delTemplate','assignShift','delShift'].includes(a)&&!isAdmin())return;
+  if(a==='addTemplate'||a==='editTemplate'){
+    const ex=S.templates.find(s=>s.id===id)||{};
+    const fields=[['name','shiftName','text',''],['start_time','startTime','time','08:00'],['end_time','endTime','time','12:00'],['in_before','inBefore','number',30],['in_after','inAfter','number',15],['out_before','outBefore','number',0],['out_after','outAfter','number',30],['grace','grace','number',15]];
+    openModal(t('addTemplate'),`<div class="grid2">${fields.map(([k,label,type,def])=>`<div class="field"><label>${t(label)}</label><input required name="${k}" type="${type}" ${type==='number'?'min="0" max="720" step="1"':''} value="${esc(ex[k]??def)}"></div>`).join('')}</div>`,async d=>{
+      if(d.start_time===d.end_time)return t('dateOrder');
+      const row={...d};for(const k of ['in_before','in_after','out_before','out_after','grace'])row[k]=Number(d[k]);
+      if(a==='editTemplate')await q(sb.from('shift_templates').update(row).eq('id',id));else await q(sb.from('shift_templates').insert(row));
+    });
+  }
+  if(a==='assignShift')openModal(t('assignShift'),`<div class="grid2"><div class="field full"><label>${t('employee')}</label><select required name="employee">${activeEmps().map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('')}</select></div><div class="field"><label>${t('templates')}</label><select required name="template">${S.templates.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div><div class="field"><label>${t('date')}</label><input required type="date" name="day" value="${ui.scheduleDate}"></div></div>`,async d=>{await q(sb.rpc('assign_shift',{p_employee:d.employee,p_template:d.template,p_day:d.day}))});
+  if((a==='delTemplate'||a==='delShift')&&confirm(t('confirmDelete'))){await q(sb.from(a==='delShift'?'employee_shifts':'shift_templates').delete().eq('id',id));await reload()}
+
   if(a==='punch')return doPunch();
   if(a==='addEmp'||a==='editEmp'){const ex=a==='editEmp'?emp(id):null;
     openModal(t(ex?'editEmployee':'addEmployee'),empForm(ex||{}),async d=>{const row=empToDb(d);
@@ -893,11 +931,11 @@ document.addEventListener('click',async e=>{
   if(a==='addPunch'){
     openModal(t('addPunch'),`<div class="grid2">
       <div class="field full"><label>${t('employee')} *</label><select name="empId" required><option value="">${t('selectEmp')}</option>${S.employees.map(x=>`<option value="${x.id}" ${ui.tlEmp===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
-      <div class="field"><label>${t('punchType')}</label><select name="type"><option value="in">${t('clockIn')}</option><option value="out">${t('clockOut')}</option></select></div>
+      <div class="field full"><label>${t('assignedShifts')}</label><select name="shiftId"><option value="">Legacy / ${t('none')}</option>${S.shifts.map(s=>`<option value="${s.id}">${esc(emp(s.employee_id)?.name)} — ${s.day} — ${esc(s.name)}</option>`).join('')}</select></div><div class="field"><label>${t('punchType')}</label><select name="type"><option value="in">${t('clockIn')}</option><option value="out">${t('clockOut')}</option></select></div>
       <div class="field"><label>${t('date')} *</label><input type="date" name="date" required value="${todayStr()}"></div>
       <div class="field"><label>${t('time')} *</label><input type="time" name="time" required></div>
       <div class="field"><label>${t('note')}</label><input type="text" name="note"></div></div>`,
-      async d=>{await q(sb.from('punches').insert({employee_id:d.empId,type:d.type,ts:new Date(d.date+'T'+d.time).toISOString(),manual:true,note:nz(d.note),location_id:nz(emp(d.empId)?.locId)}));});}
+      async d=>{const sh=S.shifts.find(s=>s.id===d.shiftId);if(sh&&sh.employee_id!==d.empId)return t('selectEmp');const stamp=await q(sb.rpc('hr_local_timestamp',{p_day:d.date,p_time:d.time}));await q(sb.from('punches').insert({shift_id:nz(d.shiftId),employee_id:d.empId,type:d.type,ts:stamp,manual:true,note:nz(d.note),location_id:sh?.location_id||nz(emp(d.empId)?.locId)}));});}
   if(a==='delSession'&&confirm(t('confirmDelete'))){await q(sb.from('punches').delete().in('id',b.dataset.ids.split(',')));await reload();}
   if(a==='slip')printSlip(id);
   if(a==='csv'){const m=ui.payMonth,allS=buildSessions();
